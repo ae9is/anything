@@ -1,0 +1,20 @@
+{
+  // ref: https://middy.js.org/docs/best-practices/bundling/
+  // ref: https://www.npmjs.com/package/serverless-plugin-typescript
+  "compilerOptions": {
+    //"outDir": "./dist",
+    //"rootDir": "./src",
+    "resolveJsonModule": true,
+    "baseUrl": "./",
+    "esModuleInterop": true,
+    "preserveConstEnums": true,
+    "strictNullChecks": true,
+    "allowJs": false,
+    "target": "es2021",
+    "typeRoots": ["node_modules/@types"],
+    "moduleResolution": "node"
+  },
+  "exclude": ["node_modules"],
+  "extends": "tsconfig/base.json",
+  "include": ["src"]
+}

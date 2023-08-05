@@ -1,0 +1,16 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    appDir: true,
+  },
+  reactStrictMode: true,
+  // Build static export of app
+  // ref: https://nextjs.org/docs/app/building-your-application/deploying/static-exports#configuration
+  output: 'export',
+  distDir: 'dist',
+  // Only for Amplify Auth
+  // ref: https://github.com/aws-amplify/amplify-cli/issues/7359
+  trailingSlash: true,
+}
+
+module.exports = nextConfig

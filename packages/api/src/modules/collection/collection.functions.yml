@@ -1,0 +1,36 @@
+listCollections:
+  handler: src/modules/collection/collection_handler.collectionsByType
+  events:
+    - httpApi:
+        path: /v1/types/{id}/collections
+        method: get
+        authorizer:
+          type: aws_iam
+#          name: Auth
+getCollection:
+  handler: src/modules/collection/collection_handler.collectionById
+  events:
+    - httpApi:
+        path: /v1/collections/{id}
+        method: get
+        authorizer:
+          type: aws_iam
+#          name: Auth
+putCollection:
+  handler: src/modules/collection/collection_handler.upsertCollection
+  events:
+    - httpApi:
+        path: /v1/collections/{id}
+        method: put
+        authorizer:
+          type: aws_iam
+#          name: Auth
+deleteCollection:
+  handler: src/modules/collection/collection_handler.deleteCollection
+  events:
+    - httpApi:
+        path: /v1/collections/{id}
+        method: delete
+        authorizer:
+          type: aws_iam
+#          name: Auth

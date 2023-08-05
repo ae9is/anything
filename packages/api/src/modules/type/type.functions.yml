@@ -1,0 +1,9 @@
+listTypes:
+  handler: src/modules/type/type_handler.types
+  events:
+    - httpApi:
+        path: /v1/types
+        method: get
+        authorizer:
+          type: aws_iam
+#          name: Auth

@@ -1,0 +1,9 @@
+id,sort,modified,type,author,count,ctype,itemIds
+item1,v0,1684547415512,type1,user1,5,,
+item2,v0,1684547420982,type2,user2,15,,
+item3,v0,1684547446275,type2,user1,,,
+item3,v1,1684547475938,type2,user1,,,
+item3,v2,1684547493905,,,,,
+item4,v0,1684547523882,3type,user2,,,
+typeOnes,@meta,1684547542069,,user1,,type1,"[""item1""]"
+typeTwos,@meta,1684547553469,,user2,,type2,"[“item2”,”item3”]"

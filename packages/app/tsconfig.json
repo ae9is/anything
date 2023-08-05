@@ -1,0 +1,28 @@
+{
+  "extends": "tsconfig/nextjs.json",
+  "compilerOptions": {
+    "rootDir": ".", // "src",
+    "outDir": "dist",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      // Force any peer dependencies on react to use updated typings
+      // ref: https://stackoverflow.com/questions/71841181
+      // ref: https://github.com/facebook/react/issues/24304
+      "react": [ "./node_modules/@types/react" ],
+    }
+  },
+  "include": [
+    "src",
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    "dist/types/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
+}

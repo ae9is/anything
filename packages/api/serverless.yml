@@ -1,0 +1,85 @@
+# ref: https://www.serverless.com/framework/docs/providers/aws/guide/serverless.yml
+service: anything
+frameworkVersion: "3"
+configValidationMode: warn
+# Plugin order matters
+plugins:
+  - serverless-better-credentials  # first
+  # Choose one of: plugin-typescript, esbuild
+#  - serverless-plugin-typescript
+  - serverless-esbuild
+  # Choose one of: dynamodb AND offline, localstack
+  # (Note localstack pro required for API gateway v2)
+  - serverless-dynamodb
+  - serverless-offline  # last
+#  - serverless-localstack
+custom:
+  tscpaths:
+    tsconfigPath: tsconfig.json
+  # ref: https://www.serverless.com/plugins/serverless-esbuild
+  esbuild:
+    bundle: true
+    minify: false
+    watch:
+      pattern: './**/*.(js|ts)'
+      ignore: ['./__tests__/**/*', './**/*.test.ts']  # OK
+  # ref: https://www.serverless.com/plugins/serverless-offline
+  serverless-offline:
+    httpPort: 4000
+    websocketPort: 4001
+    lambdaPort: 4002
+    # If JWT auth is used, offline plugin can't actually validate JWT signature and throws errors
+    # ref: https://www.serverless.com/plugins/serverless-offline#jwt-authorizers
+    ignoreJWTSignature: true
+    # Offline plugin has issues with IAM auth, only supports JWT auth
+    # ref: https://github.com/dherault/serverless-offline/issues/1311
+    noAuth: true
+    noPrependStateInUrl: true
+  # ref: https://www.npmjs.com/package/serverless-dynamodb
+  #serverless-dynamodb:
+  dynamodb:
+    stages:
+      - dev
+    start:
+      # To bring up dynamodb yourself with docker compose, uncomment below.
+      #  Otherwise, serverless plugin will start up the local dynamodb.
+      #noStart: true
+      # sharedDb settings makes dynamodb use one common db file,
+      #  which allows us to use any AWS profile (access keys) for development.
+      sharedDb: true
+      host: localhost
+      port: 5000
+      # dbPath is relative to: <projectroot>/node_modules/serverless-dynamodb
+      dbPath: '../../docker/dynamodb'
+      migrate: true
+      heapInitial: 200m
+      heapMax: 1g
+      convertEmptyValues: true
+      migration: true
+      seed: true
+      #cors: '*'
+      #docker: true
+      #inMemory: true
+    migration:
+      dir: './src/migrations'
+      host: localhost
+    seed:
+      test:
+        sources:
+          - table: ${self:provider.environment.NAMESPACE}-main
+            sources: [./src/data/testData.json]
+          - table: ${self:provider.environment.NAMESPACE}-types
+            sources: [./src/data/testDataTypes.json]
+  # ref: https://docs.localstack.cloud/user-guide/integrations/serverless-framework/
+  localstack:
+    stages:
+      - local
+    # TODO look into watch mode
+#    lambda: 
+#      mountCode: true
+functions:
+  - ${file(./src/modules/item/item.functions.yml)}
+  - ${file(./src/modules/collection/collection.functions.yml)}
+  - ${file(./src/modules/type/type.functions.yml)}
+resources: ${file(./_resources.yml)}
+provider: ${file(./_provider.yml)}  # OK

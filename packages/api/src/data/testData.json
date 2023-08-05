@@ -1,0 +1,60 @@
+[
+  {
+    "id": "item1",
+    "sort": "v0",
+    "modified": 1684547415512,
+    "type": "type1",
+    "count": 5,
+    "author": "user1"
+  },
+  {
+    "id": "item2",
+    "sort": "v0",
+    "modified": 1684547420982,
+    "type": "type2",
+    "count": 15,
+    "author": "user2"
+  },
+  {
+    "id": "item3",
+    "sort": "v0",
+    "modified": 1684547446275,
+    "type": "type2",
+    "author": "user1"
+  },
+  {
+    "id": "item3",
+    "sort": "v1",
+    "modified": 1684547475938,
+    "type": "type2",
+    "author": "user1"
+  },
+  {
+    "id": "item3",
+    "sort": "v2",
+    "modified": 1684547493905
+  },
+  {
+    "id": "item4",
+    "sort": "v0",
+    "modified": 1684547523882,
+    "type": "3type",
+    "author": "user2"
+  },
+  {
+    "id": "typeOnes",
+    "sort": "@meta",
+    "ctype": "type1",
+    "modified": 1684547542069,
+    "author": "user1",
+    "itemIds": [ "item1" ]
+  },
+  {
+    "id": "typeTwos",
+    "sort": "@meta",
+    "ctype": "type2",
+    "modified": 1684547553469,
+    "author": "user2",
+    "itemIds": [ "item2", "item3" ]
+  }
+]

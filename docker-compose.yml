@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  db:
+    profiles: ['development']
+    command: '-jar DynamoDBLocal.jar -port 5000 -sharedDb -dbPath ./data'
+    image: 'amazon/dynamodb-local:latest'
+    container_name: dynamodb-local
+    ports:
+      - '5000:5000'
+    volumes:
+      - './docker/dynamodb:/home/dynamodblocal/data'
+    working_dir: /home/dynamodblocal
+#  api:
+#    profiles: ['production']
+#    container_name: api
+#    build:
+#      context: ./packages/api
+#    ports:
+#      - '4000:4000'
+#    depends_on:
+#      - db
+#    links:
+#      - db
+#    environment:
+#      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+#      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+#      REGION: "${AWS_REGION}"
+#    restart: unless-stopped
+

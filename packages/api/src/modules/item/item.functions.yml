@@ -1,0 +1,48 @@
+listItemsByTypeAndFilter:
+  handler: src/modules/item/item_handler.itemsByTypeAndFilter
+  events:
+    - httpApi:
+        path: /v1/types/{id}/items
+        method: get
+        authorizer:
+          type: aws_iam
+listItemsByCollection:
+  handler: src/modules/item/item_handler.itemsByCollection
+  events:
+    - httpApi:
+        path: /v1/collections/{id}/items
+        method: get
+        authorizer:
+          type: aws_iam
+getItem:
+  handler: src/modules/item/item_handler.itemById
+  events:
+    - httpApi:
+        path: /v1/items/{id}
+        method: get
+        authorizer:
+          type: aws_iam
+postItem:
+  handler: src/modules/item/item_handler.upsertItem
+  events:
+    - httpApi:
+        path: /v1/items/{id}
+        method: post
+        authorizer:
+          type: aws_iam
+postBatchItems:
+  handler: src/modules/item/item_handler.upsertBatchItems
+  events:
+    - httpApi:
+        path: /v1/items
+        method: post
+        authorizer:
+          type: aws_iam
+deleteItem:
+  handler: src/modules/item/item_handler.deleteItem
+  events:
+    - httpApi:
+        path: /v1/items/{id}
+        method: delete
+        authorizer:
+          type: aws_iam

@@ -1,0 +1,33 @@
+{
+  "name": "logger",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "source": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+    "dev": "tsc -w",
+    "lint": "eslint \"src/**/*.ts*\"",
+    "test": "jest",
+    "update-packages": "ncu -u"
+  },
+  "jest": {
+    "preset": "jest-presets/jest/node"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.3",
+    "@types/node": "^20.4.2",
+    "eslint": "^8.45.0",
+    "eslint-config-custom": "*",
+    "jest": "^29.6.1",
+    "jest-presets": "*",
+    "npm-check-updates": "^16.10.15",
+    "tsconfig": "*",
+    "typescript": "^5.1.6"
+  }
+}
