@@ -6,7 +6,6 @@ listCollections:
         method: get
         authorizer:
           type: aws_iam
-#          name: Auth
 getCollection:
   handler: src/modules/collection/collection_handler.collectionById
   events:
@@ -15,7 +14,6 @@ getCollection:
         method: get
         authorizer:
           type: aws_iam
-#          name: Auth
 putCollection:
   handler: src/modules/collection/collection_handler.upsertCollection
   events:
@@ -24,7 +22,6 @@ putCollection:
         method: put
         authorizer:
           type: aws_iam
-#          name: Auth
 deleteCollection:
   handler: src/modules/collection/collection_handler.deleteCollection
   events:
@@ -33,4 +30,3 @@ deleteCollection:
         method: delete
         authorizer:
           type: aws_iam
-#          name: Auth

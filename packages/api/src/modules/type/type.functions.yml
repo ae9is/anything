@@ -6,4 +6,3 @@ listTypes:
         method: get
         authorizer:
           type: aws_iam
-#          name: Auth

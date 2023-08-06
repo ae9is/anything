@@ -11,19 +11,9 @@ environment:
 httpApi:
   cors: true
   payload: '2.0'
-  # Alternative to jwt authorizers: IAM to control API method access
+  # Using IAM to control API method access
   # ref: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-access-control-iam.html
   # ref: https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-control-access-using-iam-policies-to-invoke-api.html
-#  authorizers:
-#    Auth:
-#      type: jwt
-#      # ref: https://docs.aws.amazon.com/apigatewayv2/latest/api-reference/apis-apiid-authorizers-authorizerid.html#apis-apiid-authorizers-authorizerid-prop-authorizer-identitysource
-#      identitySource: $request.header.Authorization
-#      issuerUrl: https://cognito-idp.${env:AWS_REGION}.amazonaws.com/${CognitoUserPool}
-#      audience:
-#        - ${self:provider.environment.NAMESPACE}
-###      userPoolArn: !GetAtt UserPool.Arn
-###      providerARNs: !GetAtt UserPool.Arn
 
 # Allow app's lambda functions to connect to dynamodb.
 # ref: https://www.serverless.com/framework/docs/providers/aws/guide/iam
