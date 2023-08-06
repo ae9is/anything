@@ -8,11 +8,8 @@ plugins:
   # Choose one of: plugin-typescript, esbuild
 #  - serverless-plugin-typescript
   - serverless-esbuild
-  # Choose one of: dynamodb AND offline, localstack
-  # (Note localstack pro required for API gateway v2)
   - serverless-dynamodb
   - serverless-offline  # last
-#  - serverless-localstack
 custom:
   tscpaths:
     tsconfigPath: tsconfig.json
@@ -70,13 +67,6 @@ custom:
             sources: [./src/data/testData.json]
           - table: ${self:provider.environment.NAMESPACE}-types
             sources: [./src/data/testDataTypes.json]
-  # ref: https://docs.localstack.cloud/user-guide/integrations/serverless-framework/
-  localstack:
-    stages:
-      - local
-    # TODO look into watch mode
-#    lambda: 
-#      mountCode: true
 functions:
   - ${file(./src/modules/item/item.functions.yml)}
   - ${file(./src/modules/collection/collection.functions.yml)}
