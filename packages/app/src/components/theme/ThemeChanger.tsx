@@ -30,6 +30,7 @@ export function ThemeChanger() {
 
   return (
     <IconToggle
+      id="theme-change-toggle"
       data-toggle-theme={`${theme},${altTheme}`}
       readOnly
       checked={checked}
