@@ -1,10 +1,8 @@
 import { useMemo } from 'react'
 import { DataGridPremium, GridColDef, GridToolbar } from '@mui/x-data-grid-premium'
-import { Filter, defaultFilter } from 'utils'
+import { Filter, defaultFilter, stringify, notEmpty } from 'utils'
 import { queries, useConditionalQuery } from '../../data'
 import { isDefaultThemeActive } from '../../lib/theme'
-import { notEmpty } from '../../lib/array'
-import { stringify } from '../../lib/json'
 
 export interface DataGridProps {
   collection?: string
