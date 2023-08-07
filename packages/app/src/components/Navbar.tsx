@@ -4,29 +4,42 @@ import { Link } from './Link'
 import { Avatar } from './Avatar'
 import { signOut } from '../lib/auth'
 import { ThemeChanger } from './theme/ThemeChanger'
+import { usePathname } from 'next/navigation'
 
 export function Navbar() {
   const userAttr = useContext(UserAttrContext)
   const navModal = useRef<HTMLDialogElement>(null)
 
+  const pathname = usePathname()
   const links = [
     //
     'View',
     'Import'
   ]
-  const navbarLinksUi = (
-    <>
-      {links?.map((name, idx) => {
-        const href = `/${name.toLowerCase()}`
-
-        return (
-          <li key={name + idx} className="mb-4 lg:mb-0 lg:pr-2 lg:ml-8">
-            <Link onClick={closeModal} href={href}><button>{name}</button></Link>
-          </li>
-        )
-      })}
-    </>
-  )
+  function navbarLinks(modal?: boolean) {
+    return (
+      <>
+        {links?.map((name, idx) => {
+          const href = `/${name.toLowerCase()}`
+          const isActive = pathname.includes(href.toString())
+          const className = modal
+            ? 'block -ml-px pl-4 border-l ' +
+              (isActive
+                ? 'border-primary hover:border-primary-focus'
+                // text-neutral is just too dark to use, so hardcode text-gray-500 and ignore theming
+                : 'hover:!text-base-content text-gray-500 border-transparent hover:border-base-content')
+            : 'font-semibold pr-2 ml-8'
+          return (
+            <li key={name + idx}>
+              <Link onClick={closeModal} noUnderline href={href} className={className}>
+                {name}
+              </Link>
+            </li>
+          )
+        })}
+      </>
+    )
+  }
 
   function showModal() {
     navModal?.current?.showModal()
@@ -36,28 +49,18 @@ export function Navbar() {
     navModal?.current?.close()
   }
 
-  const appIcon = (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      className="w-6 h-6"
-    >
-      <path
-        strokeLinecap="round"
-        d="M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm0 0c0 1.657 1.007 3 2.25 3S21 13.657 21 12a9 9 0 10-2.636 6.364M16.5 12V8.25"
-      />
-    </svg>
+  const homeLink = (
+    <Link onClick={closeModal} noActive noUnderline href="/" className="font-semibold text-xl !text-base-content">
+      anything
+    </Link>
   )
 
   return (
     <nav className="flex-no-wrap relative flex w-full items-center justify-between bg-base-100 py-2 shadow-md shadow-black/5 lg:flex-wrap lg:justify-start">
       <div className="flex w-full flex-wrap items-center justify-between px-3">
-        <div className="">
+        <div className="lg:hidden">
           <button
-            className="block border-0 bg-transparent px-2 hover:no-underline hover:shadow-none focus:no-underline focus:shadow-none focus:outline-none focus:ring-0 lg:hidden"
+            className="block border-0 bg-transparent px-2 hover:no-underline hover:shadow-none focus:no-underline focus:shadow-none focus:outline-none focus:ring-0"
             type="button"
             onClick={showModal}
           >
@@ -81,37 +84,28 @@ export function Navbar() {
               <div className="mx-4 font-semibold text-xl">anything</div>
             </div>
           </button>
+          <dialog ref={navModal} id="navModal" className="modal justify-items-start items-stretch ">
+            <form method="dialog" className="modal-box max-h-full rounded-none w-fit">
+              <div className="mb-8">
+                {homeLink}
+              </div>
+              <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+              <ul tabIndex={0} className="z-[1] w-52 border-l border-gray-500 space-y-6">
+                {navbarLinks(true)}
+              </ul>
+            </form>
+            <form method="dialog" className="modal-backdrop">
+              <button>Close</button>
+            </form>
+          </dialog>
         </div>
-        <dialog ref={navModal} id="navModal" className="modal justify-items-start items-stretch ">
-          <form method="dialog" className="modal-box max-h-full rounded-none w-fit">
-            <div className="pb-4">
-                <Link onClick={closeModal} href="/" className="font-semibold text-xl">
-                  <button>
-                    anything
-                  </button>
-                </Link>
-            </div>
-            <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-            <ul tabIndex={0} className="z-[1] menu p-1 w-52">
-              {navbarLinksUi}
-            </ul>
-          </form>
-          <form method="dialog" className="modal-backdrop">
-            <button>close</button>
-          </form>
-        </dialog>
 
         <div className="!visible hidden flex-grow basis-[100%] items-center lg:!flex md:basis-auto">
-          <Link href="/" className="font-semibold text-xl ml-2">
-            anything
-          </Link>
-          {/*
-          <Link className="mb-4 mr-2 mt-3 flex items-center lg:mb-0 lg:mt-0" href="/">
-            {appIcon}
-          </Link>
-          */}
+          <div className="ml-2">
+            {homeLink}
+          </div>
           <ul className="list-style-none mr-auto flex flex-col pl-0 lg:flex-row">
-            {navbarLinksUi}
+            {navbarLinks()}
           </ul>
         </div>
 
@@ -129,7 +123,7 @@ export function Navbar() {
                 <p>Logged in as {userAttr?.displayName || 'Guest'}</p>
               </li>
               <li>
-                <Link onClick={signOut} href="/">
+                <Link noUnderline onClick={signOut} href="/">
                   Sign out
                 </Link>
               </li>
