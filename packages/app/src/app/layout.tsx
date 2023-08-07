@@ -12,6 +12,9 @@ import './styles.css'
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-theme={initialTheme}>
+      <head>
+        <title>anything: A flexible document storage / item management system</title>
+      </head>
       <body>
         <AuthProvider>
           <div className="bg-base-200 min-h-screen">{children}</div>
