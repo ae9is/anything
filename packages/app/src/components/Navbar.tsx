@@ -21,7 +21,7 @@ export function Navbar() {
 
         return (
           <li key={name + idx} className="mb-4 lg:mb-0 lg:pr-2 lg:ml-8">
-            <Link href={href}><button>{name}</button></Link>
+            <Link onClick={closeModal} href={href}><button>{name}</button></Link>
           </li>
         )
       })}
@@ -30,6 +30,10 @@ export function Navbar() {
 
   function showModal() {
     navModal?.current?.showModal()
+  }
+
+  function closeModal() {
+    navModal?.current?.close()
   }
 
   const appIcon = (
@@ -78,16 +82,10 @@ export function Navbar() {
             </div>
           </button>
         </div>
-        {/*
-          TODO FIXME
-          Clicking any button will close the modal.
-          Except if a modal link to the current page is clicked, then nothing will happen.
-          Sometimes the modal will not close regardless when a link is clicked.
-        */}
         <dialog ref={navModal} id="navModal" className="modal justify-items-start items-stretch ">
           <form method="dialog" className="modal-box max-h-full rounded-none w-fit">
             <div className="pb-4">
-                <Link href="/" className="font-semibold text-xl">
+                <Link onClick={closeModal} href="/" className="font-semibold text-xl">
                   <button>
                     anything
                   </button>
