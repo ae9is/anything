@@ -33,11 +33,9 @@ npm run dev
 
 Refer to the readmes for `packages/api` and `packages/app` to deploy the backend and host the web app on the client.
 
-### Monorepo structure
+## Monorepo structure
 
 This Turborepo includes the following packages and apps:
-
-### Apps and Packages
 
 - `api`: a [Serverless](https://serverless.com/) api on AWS or localhost
 - `app`: a [Next.js](https://nextjs.org/) app using app router
