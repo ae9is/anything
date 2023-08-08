@@ -128,14 +128,10 @@ export function ArraySelect({
       value={selectedOption}
       onChange={handleChange}
       isSearchable
-      //components={{
-      //  // Hide dropdown indicator to match fontpicker
-      //  IndicatorSeparator: () => null,
-      //  DropdownIndicator: () => null,
-      //}}
       className={join('h-12', className)}
       styles={customStyles}
       theme={customTheme}
+      placeholder={'Select a value'}
       {...props}
     />
   )
