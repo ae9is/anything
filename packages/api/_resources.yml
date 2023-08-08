@@ -42,12 +42,6 @@ Resources:
               KeyType: HASH
             - AttributeName: id
               KeyType: RANGE
-        - IndexName: gsi3
-          Projection:
-            ProjectionType: KEYS_ONLY
-          KeySchema:
-            - AttributeName: type
-              KeyType: HASH
       BillingMode: PAY_PER_REQUEST
       # Uncomment for deploying, following parameters are incompatible with serverless dynamodb local plugin:
       #StreamEnabled: True
