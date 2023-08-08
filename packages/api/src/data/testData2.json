@@ -1,0 +1,34 @@
+[
+  {
+    "id": "item10",
+    "sort": "v0",
+    "modified": 1684649415780,
+    "type": "3type",
+    "count": 3,
+    "author": "user1"
+  },
+  {
+    "id": "item11",
+    "sort": "v0",
+    "modified": 1684649425980,
+    "type": "3type",
+    "count": 0,
+    "author": "user1"
+  },
+  {
+    "id": "item12",
+    "sort": "v0",
+    "modified": 1684649525980,
+    "type": "typeFour",
+    "count": 1,
+    "author": "user2"
+  },
+  {
+    "id": "newThrees",
+    "sort": "@meta",
+    "ctype": "3type",
+    "modified": 1684649426980,
+    "author": "user1",
+    "itemIds": [ "item10", "item11" ]
+  }
+]
