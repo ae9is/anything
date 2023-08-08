@@ -16,8 +16,8 @@ import {
   waitUntilTableNotExists,
 } from '@aws-sdk/client-dynamodb'
 import logger from 'logger'
-import { Filter } from 'utils'
-import { ddbClient, ddbDocClient, schema, table, testDataFilePath } from '../services/dynamodb'
+import { Filter, notEmpty } from 'utils'
+import { ddbClient, ddbDocClient, schema, table, testDataFilePath, typesTable } from '../services/dynamodb'
 
 // One table schema
 export const createSchema = async () => {
@@ -76,6 +76,8 @@ export const batchWrite = async (items: Item[], batchSize = 25) => {
     })
   })
   await Promise.all(batchRequests)
+  const uniqueTypes = _.uniq(items?.map(item => item?.type).filter(notEmpty))
+  await putTypes(uniqueTypes, batchSize)
   return { itemCount: items.length }
 }
 
@@ -150,6 +152,7 @@ export const putItem = async (item: Item) => {
     Item: withDate,
   })
   await ddbDocClient.send(cmd)
+  item?.type && await putType(item.type)
   return true
 }
 
@@ -245,4 +248,33 @@ export const queryByTypeAndFilter = async (
   const items = resp?.Items
   const lastKey = resp?.LastEvaluatedKey
   return { items: items, lastKey: lastKey }
+}
+
+// Write item type to unique types table
+const putType = async (type: string) => {
+  const typesCmd = new PutCommand({
+    TableName: typesTable,
+    Item: { id: type },
+  })
+  await ddbDocClient.send(typesCmd)
+}
+
+const putTypes = async (types: string[], batchSize = 35) => {
+  const putRequests = types?.map((type) => ({
+    PutRequest: {
+      Item: { id: type },
+    },
+  }))
+  const batches = _.chunk(putRequests, batchSize)
+  const batchRequests = batches?.map(async (batch, i) => {
+    const cmd = new BatchWriteCommand({
+      RequestItems: {
+        [typesTable]: batch,
+      },
+    })
+    await ddbDocClient.send(cmd).then(() => {
+      logger.log(`batch ${i + 1} / ${batches.length} written with ${batch.length} items`)
+    })
+  })
+  await Promise.all(batchRequests)
 }

@@ -13,7 +13,7 @@ export function TypeSelect({
   value,
   onChange,
 }: TypeSelectProps) {
-  const queryResultMapper = (typeInfo: any) => typeInfo?.type
+  const queryResultMapper = (typeInfo: any) => typeInfo?.id
 
   return (
     <LoadingSelect

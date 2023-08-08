@@ -3,6 +3,7 @@ import { CreateTableCommandInput, DynamoDBClient } from '@aws-sdk/client-dynamod
 import logger from 'logger'
 import { AWS_REGION, DATABASE_URL, IS_OFFLINE, STAGE, SERVICE_NAME } from '../config'
 import defaultSchema from '../migrations/schema.json'
+import typesSchema from '../migrations/schema-types.json'
 
 // Should match service name in serverless.yml and stage in _provider.yml
 const namespace = SERVICE_NAME + (STAGE ? '-' + STAGE : '') + '-'
@@ -51,12 +52,7 @@ export const gsi2Id = defaultSchema?.GlobalSecondaryIndexes?.[1].KeySchema?.filt
 export const gsi2Sort = defaultSchema?.GlobalSecondaryIndexes?.[1].KeySchema?.filter(
   (attr) => attr.KeyType === 'RANGE'
 )[0]?.AttributeName
-export const gsi3 = defaultSchema?.GlobalSecondaryIndexes?.[2].IndexName
-export const gsi3Id = defaultSchema?.GlobalSecondaryIndexes?.[2].KeySchema?.filter(
-  (attr) => attr.KeyType === 'HASH'
-)[0]?.AttributeName
-export const gsi3Sort = defaultSchema?.GlobalSecondaryIndexes?.[2].KeySchema?.filter(
-  (attr) => attr.KeyType === 'RANGE'
-)[0]?.AttributeName
+
+export const typesTable = namespace + typesSchema?.TableName
 
 export const testDataFilePath = 'src/data/testData.json' // relative to api project root

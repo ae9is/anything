@@ -36,9 +36,7 @@ export function LoadingSelect({
     } else {
       newValues = data?.items
     }
-    // TODO REMOVE Filter out unique values as a temporary workaround until types are streamed to separate table
-    return [...new Set(newValues ?? [])]
-    //return newValues ?? []
+    return newValues ?? []
   }, [data, queryResultMapper])
 
   function handleChange(newValue?: string) {

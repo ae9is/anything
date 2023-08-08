@@ -16,7 +16,7 @@ export default function Page() {
     list = (
       <ul>
         {types.map((typeInfo: any, idx: number) => (
-          <li key={idx + typeInfo?.type}>{typeInfo?.type}</li>
+          <li key={idx + typeInfo?.id}>{typeInfo?.id}</li>
         ))}
       </ul>
     )
