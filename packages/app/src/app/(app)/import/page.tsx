@@ -6,7 +6,7 @@ import logger from 'logger'
 import { getJsonArrayDataFromFile } from '../../../lib/spreadsheet'
 import { NewTabLink } from '../../../components'
 import { queries, requestQuery } from '../../../data'
-import { chunkArray } from '../../../lib/array'
+import { chunkArray } from 'utils'
 import { lambdaPayloadLimit } from '../../../config'
 import { join } from '../../../lib/style'
 
