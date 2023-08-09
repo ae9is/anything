@@ -46,7 +46,8 @@ export async function changeById(
     return send('Request must contain id and body', StatusCodes.BAD_REQUEST)
   }
   const data = await resolver(id, body)
-  return send(data)
+  const statusCode = data ? StatusCodes.OK : StatusCodes.BAD_REQUEST
+  return send(data, statusCode)
 }
 
 export async function changeBatch(
