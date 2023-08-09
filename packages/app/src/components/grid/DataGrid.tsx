@@ -32,7 +32,7 @@ export function DataGrid({
       },
     }
   )
-  const erroredItemCount = useMemo(() => data.errorCount ?? 0, [data])
+  const erroredItemCount = useMemo(() => data?.errorCount ?? 0, [data])
   const rows: any[] = useMemo(() => data?.items || [], [data])
   const cols: GridColDef[] = useMemo(() => {
     const idHeader = {
