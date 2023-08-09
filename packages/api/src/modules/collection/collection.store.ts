@@ -1,10 +1,12 @@
 import { gsi2, gsi2Id } from '../../services/dynamodb'
 import { Item, deleteItem, getItem, putItem, queryByTypeAndFilter } from '../../store/store'
 
-export const createCollection = async (collectionId: string, itemIds: string[]) => {
+export const putCollection = async (id: string, ctype: string, itemIds: string[] = []) => {
   const item: Item = {
-    id: collectionId,
-    itemIds: itemIds,
+    id,
+    sort: '@meta',
+    ctype,
+    itemIds,
   }
   return putItem(item)
 }
