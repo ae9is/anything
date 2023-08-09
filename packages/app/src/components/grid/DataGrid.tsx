@@ -32,6 +32,7 @@ export function DataGrid({
       },
     }
   )
+  const erroredItemCount = useMemo(() => data.errorCount ?? 0, [data])
   const rows: any[] = useMemo(() => data?.items || [], [data])
   const cols: GridColDef[] = useMemo(() => {
     const idHeader = {
@@ -65,22 +66,27 @@ export function DataGrid({
       {error && <div className="text-error">Error</div>}
       {isLoading && <div className="text">Loading...</div>}
       {!error && !isLoading && (
-        <DataGridPremium
-          style={{
-            color: isDefaultTheme ? 'white' : 'unset',
-          }}
-          columns={cols}
-          rows={rows}
-          loading={isLoading}
-          slots={{
-            toolbar: GridToolbar,
-          }}
-          // Need to defined custom row id because by default data grid will 
-          //  use and expect any id column to be unique across rows.
-          // Here, items should be unique across id and sort key (version).
-          // ref: https://mui.com/x/react-data-grid/row-definition/
-          getRowId={(row) => row?.id + row?.sort}
-        />
+        <>
+          <DataGridPremium
+            style={{
+              color: isDefaultTheme ? 'white' : 'unset',
+            }}
+            columns={cols}
+            rows={rows}
+            loading={isLoading}
+            slots={{
+              toolbar: GridToolbar,
+            }}
+            // Need to defined custom row id because by default data grid will 
+            //  use and expect any id column to be unique across rows.
+            // Here, items should be unique across id and sort key (version).
+            // ref: https://mui.com/x/react-data-grid/row-definition/
+            getRowId={(row) => row?.id + row?.sort}
+          />
+          {erroredItemCount > 0 && (
+            <div className="float-right mt-4 text-error">({erroredItemCount} item{erroredItemCount > 1 ? 's' : ''} couldn&apos;t be retrieved and aren&apos;t displayed here)</div>
+          )}
+        </>
       )}
     </div>
   )
