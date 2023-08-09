@@ -24,11 +24,32 @@
     "author": "user2"
   },
   {
+    "id": "badItem",
+    "sort": "vBAD",
+    "type": "bad"
+  },
+  {
+    "sort": "bad",
+    "type": "bad"
+  },
+  {
     "id": "newThrees",
     "sort": "@meta",
     "ctype": "3type",
     "modified": 1684649426980,
     "author": "user1",
     "itemIds": [ "item10", "item11" ]
+  },
+  {
+    "id": "typeXs",
+    "sort": "@meta",
+    "ctype": "typeX",
+    "itemIds": []
+  },
+  {
+    "id": "badCollection",
+    "sort": "bad",
+    "ctype": "bad",
+    "itemIds": []
   }
 ]
