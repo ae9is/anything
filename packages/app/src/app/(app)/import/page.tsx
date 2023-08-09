@@ -43,6 +43,10 @@ export default function Page() {
           const res = await requestQuery(queries.postBatchItems, {
             body: json,
           })
+          if (json.length !== res?.itemCount) {
+            logger.error(`Sent ${json.length} items and ${res?.itemCount} passed validation`)
+            throw Error('Some items failed')
+          }
         } catch (e) {
           ++apiErrorCount
         }
@@ -132,7 +136,7 @@ export default function Page() {
             <div>{totalCount} file{totalCount > 1 ? 's' : ''} processed</div>
             {errorCount > 0 && (
               <div className="tooltip" data-tip="Check console logs for error details">
-                <div className="text-error">{errorCount} errors</div>
+                <div className="text-error">{errorCount} error{errorCount > 1 ? 's' : ''}</div>
               </div>
             )}
           </>

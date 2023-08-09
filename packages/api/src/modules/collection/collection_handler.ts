@@ -1,6 +1,6 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda'
 import { middyfy } from '../../lib/middy'
-import { createCollection, getCollectionById, getCollectionsByType } from './collection.store'
+import { getCollectionById, getCollectionsByType, putCollection } from './collection.store'
 import { changeById, deleteById, getById, getByIdAndQuery } from '../../lib/routing'
 import { deleteCollection as deleteColl } from './collection.store'
 
@@ -26,8 +26,9 @@ export const upsertCollection = middyfy(async (event: APIGatewayProxyEventV2) =>
 })
 
 async function resolveUpsertCollection(id: string, body: any) {
+  const ctype: string = body?.ctype
   const itemIds: [] = body?.itemIds ?? []
-  return createCollection(id, itemIds)
+  return putCollection(id, ctype, itemIds)
 }
 
 export const deleteCollection = middyfy(async (event: APIGatewayProxyEventV2) => {

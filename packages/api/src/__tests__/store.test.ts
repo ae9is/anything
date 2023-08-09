@@ -1,7 +1,7 @@
 //import { describe, it, expect } from 'jest'
 import logger from 'logger'
 import { dropSchema, createSchema, loadTestData, putItem } from '../store/store'
-import { createCollection, getCollectionsByType } from '../modules/collection/collection.store'
+import { putCollection, getCollectionsByType } from '../modules/collection/collection.store'
 import { getTypes } from '../modules/type/type.store'
 
 export const run = async () => {
@@ -31,7 +31,7 @@ export const run = async () => {
     type: 'type2',
   })
   logger.log('Adding new collection...')
-  await createCollection('coll1', ['item1', 'item5'])
+  await putCollection('coll1', 'type1', ['item1', 'item5'])
   const { items, lastKey } = await getTypes()
   logger.log('Types:')
   const types: string[] = [...new Set(items?.map((i) => i?.type as unknown as string) || [])]
