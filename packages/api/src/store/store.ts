@@ -77,7 +77,7 @@ export const batchWrite = async (items: Item[], batchSize = 25) => {
       },
     })
     await ddbDocClient.send(cmd).then(() => {
-      logger.log(`batch ${i + 1} / ${batches.length} written with ${batch.length} items`)
+      logger.log(`Batch ${i + 1} / ${batches.length} written with ${batch.length} items`)
     })
   })
   await Promise.all(batchRequests)
@@ -88,6 +88,7 @@ export const batchWrite = async (items: Item[], batchSize = 25) => {
 
 export const batchGet = async (keys: ItemKey[], batchSize = 50, projectionExpression?: string) => {
   const items: Record<string, any>[] = []
+  let errorCount = 0
   const batches = _.chunk(keys, batchSize)
   const batchRequests = batches?.map(async (batch, i) => {
     const keys = {
@@ -106,15 +107,19 @@ export const batchGet = async (keys: ItemKey[], batchSize = 50, projectionExpres
         items.push(item)
       }
     }
-    logger.log(`batch ${i + 1} / ${batches.length} retrieved`)
-    // TODO handle unretrieved keys
+    logger.log(`Batch ${i + 1} / ${batches.length} retrieved`)
     const unprocessedKeys = output?.UnprocessedKeys
-    if (unprocessedKeys && Object.keys(unprocessedKeys)?.length > 0) {
-      logger.log(`failed to retrieve ${unprocessedKeys?.length} keys`)
+    // Could also retry fetching keys first, instead of just warning
+    if (unprocessedKeys) {
+      const numUnprocessed = Object.keys(unprocessedKeys)?.length
+      if (numUnprocessed > 0) {
+        logger.log(`Failed to retrieve ${unprocessedKeys?.length} keys`)
+        errorCount += numUnprocessed
+      }
     }
   })
   await Promise.all(batchRequests)
-  return { items: items }
+  return { items: items, errorCount }
 }
 
 const validateItems = (items: any[]) => {
@@ -309,7 +314,7 @@ const putTypes = async (types: string[], batchSize = 35) => {
       },
     })
     await ddbDocClient.send(cmd).then(() => {
-      logger.log(`batch ${i + 1} / ${batches.length} written with ${batch.length} types`)
+      logger.log(`Batch ${i + 1} / ${batches.length} written with ${batch.length} types`)
     })
   })
   await Promise.all(batchRequests)
