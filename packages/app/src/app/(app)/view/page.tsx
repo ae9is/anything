@@ -16,22 +16,29 @@ export default function Page() {
 
   const [type, setType] = useState<string>()
   const [collection, setCollection] = useState<string>()
+  const [shouldLoadCollection, setShouldLoadCollection] = useState(false)
   const [filter, setFilter] = useState<Filter>()
 
   function handleChangeType(newValue: string | undefined) {
     if (newValue !== type) {
       // Reset collection on switching types
+      setShouldLoadCollection(false)
       setCollection(undefined)
     }
     setType(newValue)
   }
 
   function handleChangeCollection(newValue: string | undefined) {
+    setShouldLoadCollection(false)
     setCollection(newValue)
   }
 
   function handleSubmitTypeSearchForm(filter?: Filter) {
     setFilter(filter)
+  }
+
+  function handleLoadCollection() {
+    setShouldLoadCollection(true)
   }
 
   return (
@@ -43,9 +50,7 @@ export default function Page() {
         <h3>Types</h3>
         <div className="flex flex-col lg:flex-row items-end">
           <TypeSelect value={type} onChange={handleChangeType} />
-          <TypeSearchForm
-            onSubmit={handleSubmitTypeSearchForm}
-          />
+          <TypeSearchForm onSubmit={handleSubmitTypeSearchForm} />
         </div>
       </div>
 
@@ -53,7 +58,12 @@ export default function Page() {
         <div className="p-2">
           <h3>Collections</h3>
           <div className="flex flex-col lg:flex-row items-end">
-            <CollectionSelect type={type} value={collection} onChange={handleChangeCollection} />
+            <CollectionSelect
+              type={type}
+              value={collection}
+              onChange={handleChangeCollection}
+              onLoad={handleLoadCollection}
+            />
           </div>
         </div>
       )}
@@ -64,6 +74,7 @@ export default function Page() {
             type={type}
             collection={collection}
             filter={filter}
+            loadCollection={shouldLoadCollection}
           />
         </div>
       )}

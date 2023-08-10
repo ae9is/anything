@@ -22,6 +22,14 @@ export const queries: Record<string, Query> = {
     path: (id: string) => `collections/${id}`,
     method: 'PUT',
   },
+  addItemsToCollection: {
+    path: (id: string) => `collections/${id}/items/add`,
+    method: 'PUT',
+  },
+  removeItemsFromCollection: {
+    path: (id: string) => `collections/${id}/items/remove`,
+    method: 'PUT',
+  },
   deleteCollection: {
     path: (id: string) => `collections/${id}`,
     method: 'DELETE',
