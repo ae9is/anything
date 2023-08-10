@@ -22,7 +22,7 @@ import { ddbClient, ddbDocClient, schema, table, testDataFilePath, typesTable } 
 // One table schema
 export const createSchema = async () => {
   await ddbClient.send(new CreateTableCommand(schema))
-  waitUntilTableExists(
+  return waitUntilTableExists(
     {
       client: ddbClient,
       maxWaitTime: 15,
@@ -41,7 +41,7 @@ export const dropSchema = async () => {
       TableName: table,
     })
   )
-  waitUntilTableNotExists(
+  return waitUntilTableNotExists(
     {
       client: ddbClient,
       maxWaitTime: 10,
