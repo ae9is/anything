@@ -5,6 +5,7 @@ export interface ModalButtonProps {
   modalTitle?: string
   modalText?: string
   onConfirm?: () => void
+  disabled?: boolean
 }
 
 export function ModalButton({
@@ -12,6 +13,7 @@ export function ModalButton({
   modalTitle,
   modalText = 'Are you sure?',
   onConfirm,
+  disabled = false,
   ...rest
 }: ModalButtonProps) {
   const modalRef = useRef<HTMLDialogElement>(null)
@@ -26,7 +28,7 @@ export function ModalButton({
 
   return (
     <>
-      <button className="mt-4 lg:mt-0 lg:ml-4 btn btn-primary" type="submit" onClick={showModal}>
+      <button disabled={disabled} className="mt-4 lg:mt-0 lg:ml-4 btn btn-primary" type="submit" onClick={showModal}>
         {buttonText}
       </button>
       <dialog ref={modalRef} className="modal" {...rest}>

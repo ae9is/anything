@@ -1,7 +1,7 @@
 // prettier-ignore
 'use client'
 
-import useSWR from 'swr'
+import useSWR, { mutate } from 'swr'
 import { QueryParameterBag, RequestProps, requestUsingAmplify } from '../lib/request'
 import { Query } from './queries'
 import useSWRMutation from 'swr/mutation'
@@ -54,6 +54,13 @@ export function useMutation(query: Query, options?: QueryOptions) {
 export async function requestQuery(query: Query, options?: QueryOptions) {
   const key = getRequestKeyFromQuery(query, options)
   return requester(key)
+}
+
+// Trigger revalidation for queries with relevant keys.
+// Needed if a mutation indirectly affects queries.
+export function invalidate(query: Query, options?: QueryOptions) {
+  const key = getRequestKeyFromQuery(query, options)
+  mutate(key)
 }
 
 function getRequestKeyFromQuery(query: Query, options?: QueryOptions) {
