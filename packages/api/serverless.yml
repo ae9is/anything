@@ -22,9 +22,9 @@ custom:
       ignore: ['./__tests__/**/*', './**/*.test.ts']  # OK
   # ref: https://www.serverless.com/plugins/serverless-offline
   serverless-offline:
-    httpPort: 4000
-    websocketPort: 4001
-    lambdaPort: 4002
+    httpPort: ${env:API_PORT, 4000}
+    websocketPort: ${env:WEBSOCKET_PORT, 4001}
+    lambdaPort: ${env:LAMBDA_PORT, 4002}
     # If JWT auth is used, offline plugin can't actually validate JWT signature and throws errors
     # ref: https://www.serverless.com/plugins/serverless-offline#jwt-authorizers
     ignoreJWTSignature: true
@@ -71,5 +71,6 @@ functions:
   - ${file(./src/modules/item/item.functions.yml)}
   - ${file(./src/modules/collection/collection.functions.yml)}
   - ${file(./src/modules/type/type.functions.yml)}
+  - ${file(./src/modules/health/health.functions.yml)}
 resources: ${file(./_resources.yml)}
 provider: ${file(./_provider.yml)}  # OK

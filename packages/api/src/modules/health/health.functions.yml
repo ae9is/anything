@@ -1,0 +1,8 @@
+healthz:
+  handler: src/modules/health/health_handler.healthz
+  events:
+    - httpApi:
+        path: /v1/healthz
+        method: get
+        authorizer:
+          type: aws_iam

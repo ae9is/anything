@@ -20,3 +20,5 @@ if (IS_OFFLINE) {
 }
 export const AWS_REGION = awsRegion
 export const DATABASE_URL = databaseUrl
+export const API_PORT = process.env.API_PORT || '4000'
+export const LOCAL_API_HOST = `http://localhost:${API_PORT}`
