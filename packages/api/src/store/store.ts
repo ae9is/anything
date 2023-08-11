@@ -235,8 +235,7 @@ const isValidItem = (item: Item) => {
 }
 
 const withDate = (item: Item) => {
-  // Prefer user supplied modification date
-  const itemWithDate = { modified: new Date().getTime(), ...item }
+  const itemWithDate = { ...item, modified: new Date().getTime() }
   return itemWithDate
 }
 
