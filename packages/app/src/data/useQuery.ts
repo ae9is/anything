@@ -39,7 +39,11 @@ export function useConditionalQuery(
   return useQuery(chosen, chosenOpts)
 }
 
-// Mutation is triggered on user interaction
+// Mutation is triggered on user interaction via trigger().
+// Note that we can't trigger(newValue) because trigger doesn't play nice with how our requests are setup.
+// [Keys are objects to avoid unnecessary invalidation of entire chains of queries; trigger(arg) 
+//   only modifies request(key, { arg }) in useSWRMutation(key, request), and key is untouched.]
+// ref: https://swr.vercel.app/docs/mutation#basic-usage
 export function useMutation(query: Query, options?: QueryOptions) {
   const key = getRequestKeyFromQuery(query, options)
   // ref: https://swr.vercel.app/docs/mutation#useswrmutation
@@ -86,7 +90,7 @@ export async function requester(props: RequesterProps) {
     const error = new SWRError('Error with request', status, statusText)
     throw error
   }
-  return data || {}
+  return data ?? {}
 }
 
 class SWRError extends Error {
