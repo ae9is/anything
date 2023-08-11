@@ -25,6 +25,16 @@ export function Toolbar({
   const [anchor, setAnchor] = useState<HTMLButtonElement>()
   const open = Boolean(anchor)
 
+  function handleAdd() {
+    onAddSelectedToCollection?.()
+    setAnchor(undefined)
+  }
+
+  function handleRemove() {
+    onRemoveSelectedFromCollection?.()
+    setAnchor(undefined)
+  }
+
   return (
     <GridToolbarContainer>
       <GridToolbar />
@@ -53,8 +63,8 @@ export function Toolbar({
             setAnchor(undefined)
           }}
         >
-          <MenuItem onClick={onAddSelectedToCollection}>+ Add selected</MenuItem>
-          <MenuItem onClick={onRemoveSelectedFromCollection}>- Remove selected</MenuItem>
+          <MenuItem onClick={handleAdd}>+ Add selected</MenuItem>
+          <MenuItem onClick={handleRemove}>- Remove selected</MenuItem>
         </Menu>
       </GridToolbarContainer>
     </GridToolbarContainer>
