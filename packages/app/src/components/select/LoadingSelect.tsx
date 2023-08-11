@@ -11,6 +11,9 @@ export interface LoadingSelectProps {
   queryResultMapper?: (data: any) => any[]
   value?: string
   onChange?: (newValue: string | undefined) => void
+  newOptionsAllowed?: boolean
+  isCreatingNewOption?: boolean
+  onCreateOption?: (newValue?: string) => void
 }
 
 export function LoadingSelect({
@@ -19,6 +22,9 @@ export function LoadingSelect({
   queryResultMapper,
   value,
   onChange,
+  newOptionsAllowed,
+  isCreatingNewOption,
+  onCreateOption,
 }: LoadingSelectProps) {
   const { data, error, isLoading } = useQuery(query, queryOptions)
   let fallback: string | undefined = '...'
@@ -46,7 +52,16 @@ export function LoadingSelect({
   return (
     <div className="w-full">
       {fallback && <p>{fallback}</p>}
-      {!fallback && <ArraySelect value={value} options={values} onChange={handleChange} />}
+      {!fallback && (
+        <ArraySelect
+          value={value}
+          options={values}
+          onChange={handleChange}
+          newOptionsAllowed={newOptionsAllowed}
+          isCreatingNewOption={isCreatingNewOption}
+          onCreateOption={onCreateOption}
+        />
+      )}
     </div>
   )
 }

@@ -30,3 +30,19 @@ deleteCollection:
         method: delete
         authorizer:
           type: aws_iam
+addItemsToCollection:
+  handler: src/modules/collection/collection_handler.addItemsToCollection
+  events:
+    - httpApi:
+        path: /v1/collections/{id}/items/add
+        method: put
+        authorizer:
+          type: aws_iam
+removeItemsFromCollection:
+  handler: src/modules/collection/collection_handler.removeItemsFromCollection
+  events:
+    - httpApi:
+        path: /v1/collections/{id}/items/remove
+        method: put
+        authorizer:
+          type: aws_iam
