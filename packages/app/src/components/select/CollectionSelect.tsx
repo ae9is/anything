@@ -5,6 +5,7 @@ import logger from 'logger'
 import { invalidate, queries, useMutation } from '../../data'
 import { ModalButton } from '../button/ModalButton'
 import { LoadingSelect } from './LoadingSelect'
+
 export interface CollectionSelectProps {
   type: string
   value?: string
@@ -32,7 +33,7 @@ export function CollectionSelect({ type, value, onChange, onLoad }: CollectionSe
   }
 
   const { error, trigger, isMutating } = useMutation(queries.deleteCollection, {
-    id: type,
+    id: value,
   })
 
   async function handleDelete() {
