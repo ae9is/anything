@@ -12,6 +12,7 @@ export interface ToolbarProps {
   rowSelectionModel: GridRowSelectionModel
   onAddSelectedToCollection?: () => void
   onRemoveSelectedFromCollection?: () => void
+  onShowItemVersions?: () => void
 }
 
 // ref: https://stackoverflow.com/a/73763021
@@ -21,6 +22,7 @@ export function Toolbar({
   rowSelectionModel,
   onAddSelectedToCollection,
   onRemoveSelectedFromCollection,
+  onShowItemVersions,
 }: ToolbarProps) {
   const [anchor, setAnchor] = useState<HTMLButtonElement>()
   const open = Boolean(anchor)
@@ -35,6 +37,10 @@ export function Toolbar({
     setAnchor(undefined)
   }
 
+  function handleShowVersions() {
+    onShowItemVersions?.()
+  }
+
   return (
     <GridToolbarContainer>
       <GridToolbar />
@@ -45,6 +51,14 @@ export function Toolbar({
       <GridToolbarExport />
       */}
       <GridToolbarContainer>
+        <Button
+          size="small"
+          disabled={rowSelectionModel?.length !== 1}
+          //startIcon={<Todo />}
+          onClick={handleShowVersions}
+        >
+          Versions
+        </Button>
         <Button
           size="small"
           disabled={!hasCollection || isMutating || rowSelectionModel?.length === 0}

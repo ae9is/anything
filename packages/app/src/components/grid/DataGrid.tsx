@@ -4,11 +4,12 @@ import {
   GridColDef,
   GridRowSelectionModel,
 } from '@mui/x-data-grid-premium'
+import { useRouter } from 'next/navigation'
 import { Filter, defaultFilter, stringify, notEmpty } from 'utils'
+import logger from 'logger'
 import { queries, useConditionalQuery, useMutation } from '../../data'
 import { isDefaultThemeActive } from '../../lib/theme'
 import { Toolbar } from './Toolbar'
-import logger from 'logger'
 import { useColumns } from './useColumns'
 
 export interface DataGridProps {
@@ -52,8 +53,38 @@ export function DataGrid({
   }
 
   const selectedItemIds = useMemo(() => {
-    return rowSelectionModel?.map((rowIdx: any) => (rowIdx as string).split('@')?.[0])?.filter(notEmpty) || []
+    return (
+      rowSelectionModel
+        ?.map((rowIdx: any) => (rowIdx as string).split('@')?.[0])
+        ?.filter(notEmpty) || []
+    )
   }, [rowSelectionModel])
+
+  const {
+    //data: addData,
+    //error: addError,
+    trigger: addTrigger,
+    //reset: addReset,
+    isMutating: addIsMutating,
+  } = useMutation(queries.addItemsToCollection, {
+    id: collection,
+    body: {
+      itemIds: selectedItemIds,
+    },
+  })
+
+  const {
+    //data: remData,
+    //error: remError,
+    trigger: remTrigger,
+    //reset: remReset,
+    isMutating: remIsMutating,
+  } = useMutation(queries.removeItemsFromCollection, {
+    id: collection,
+    body: {
+      itemIds: selectedItemIds,
+    },
+  })
 
   async function onAddSelectedToCollection() {
     logger.debug(`Adding selected items to collection ${collection}: `, rowSelectionModel)
@@ -75,31 +106,14 @@ export function DataGrid({
     }
   }
 
-  const {
-    data: addData,
-    error: addError,
-    trigger: addTrigger,
-    reset: addReset,
-    isMutating: addIsMutating,
-  } = useMutation(queries.addItemsToCollection, {
-    id: collection,
-    body: {
-      itemIds: selectedItemIds,
-    },
-  })
+  const router = useRouter()
 
-  const {
-    data: remData,
-    error: remError,
-    trigger: remTrigger,
-    reset: remReset,
-    isMutating: remIsMutating,
-  } = useMutation(queries.removeItemsFromCollection, {
-    id: collection,
-    body: {
-      itemIds: selectedItemIds,
-    },
-  })
+  function onShowItemVersions() {
+    const first = selectedItemIds?.[0]
+    if (first) {
+      router.push(`/items/${first}`)
+    }
+  }
 
   return (
     <div className="container h-96 max-h-fit">
@@ -124,6 +138,7 @@ export function DataGrid({
                 rowSelectionModel: rowSelectionModel,
                 onAddSelectedToCollection,
                 onRemoveSelectedFromCollection,
+                onShowItemVersions,
               },
             }}
             // Need to defined custom row id because by default data grid will

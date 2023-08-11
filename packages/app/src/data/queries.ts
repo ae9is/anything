@@ -46,6 +46,10 @@ export const queries: Record<string, Query> = {
     path: (id: string) => `items/${id}`,
     method: 'GET',
   },
+  getItemVersions: {
+    path: (id: string) => `items/${id}/versions`,
+    method: 'GET',
+  },
   postItem: {
     path: (id: string) => `items/${id}`,
     method: 'POST',

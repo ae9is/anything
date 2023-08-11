@@ -19,6 +19,15 @@ import logger from 'logger'
 import { Filter, notEmpty } from 'utils'
 import { ddbClient, ddbDocClient, schema, table, testDataFilePath, typesTable } from '../services/dynamodb'
 
+export interface ItemKey {
+  id: any
+  sort?: any
+}
+
+export type Item = ItemKey & {
+  [key: string]: any
+}
+
 // One table schema
 export const createSchema = async () => {
   await ddbClient.send(new CreateTableCommand(schema))
@@ -58,34 +67,6 @@ export const loadTestData = async () => {
   return batchWriteFromFile(testDataFilePath)
 }
 
-export const batchWrite = async (items: Item[], batchSize = 25) => {
-  const validated = validateItems(items)
-  const diff = items?.length - validated?.length ?? 0
-  if (diff > 0) {
-    logger.log(`Warning: ${diff} items did not pass validation`)
-  }
-  const putRequests = validated?.map((item) => ({
-    PutRequest: {
-      Item: withDate(item),
-    },
-  }))
-  const batches = _.chunk(putRequests, batchSize)
-  const batchRequests = batches?.map(async (batch, i) => {
-    const cmd = new BatchWriteCommand({
-      RequestItems: {
-        [table]: batch,
-      },
-    })
-    await ddbDocClient.send(cmd).then(() => {
-      logger.log(`Batch ${i + 1} / ${batches.length} written with ${batch.length} items`)
-    })
-  })
-  await Promise.all(batchRequests)
-  const uniqueTypes = _.uniq(validated?.map(item => item?.type ?? item?.ctype).filter(notEmpty))
-  await putTypes(uniqueTypes, batchSize)
-  return { itemCount: validated.length }
-}
-
 export const batchGet = async (keys: ItemKey[], batchSize = 50, projectionExpression?: string) => {
   const items: Record<string, any>[] = []
   let errorCount = 0
@@ -122,12 +103,110 @@ export const batchGet = async (keys: ItemKey[], batchSize = 50, projectionExpres
   return { items: items, errorCount }
 }
 
+export const batchWriteFromFile = async (path: string) => {
+  const data = fs.readFileSync(path, 'utf8')
+  return batchWriteFromJsonString(data)
+}
+
+export const batchWriteFromJsonString = async (data: string) => {
+  const items = JSON.parse(data)
+  return batchWriteFromJson(items)
+}
+
+export const batchWriteFromJson = async (items: any[]) => {
+  return batchWrite(items)
+}
+
+export const batchWrite = async (itemsOrCollections: Item[], batchSize = 25) => {
+  const [versionedItems, unversionedItems] = validateItems(itemsOrCollections)
+  const diff = itemsOrCollections?.length - (versionedItems?.length ?? 0) - (unversionedItems?.length ?? 0)
+  if (diff > 0) {
+    logger.log(`Warning: ${diff} items did not pass validation`)
+  }
+  // Versioned database items (like items) need to have their item metadata read to determine current version
+  const versionedItemsMetadataKeys: ItemKey[] = versionedItems?.map((item) => {
+    return {
+      id: item.id,
+      sort: '@meta',
+    }
+  })
+  logger.debug(`Fetching metadata for ${versionedItemsMetadataKeys?.length} versioned items ...`)
+  const currentVersionedItemsMetadata = await batchGet(versionedItemsMetadataKeys)
+  const metadata: Record<string, any> = {}
+  currentVersionedItemsMetadata.items?.forEach((itemMeta) => {
+    const id = itemMeta.id
+    metadata[id] = itemMeta
+  })
+  // Fill in new metadata version for new versioned items missing it
+  versionedItems?.forEach((item) => {
+    if (!metadata[item.id]) {
+      metadata[item.id] = {
+        id: item.id,
+        sort: '@meta',
+        currentVersion: 0,
+      }
+    }
+  })
+  logger.debug('Metadata: ', metadata)
+  // Write 3 requests for each versioned item:
+  // - Update metadata version
+  // - Update current item
+  // - Update archived (versioned) copy of item
+  const versionedPutRequests = versionedItems?.flatMap((item) => {
+    const newVersion = metadata[item?.id]?.currentVersion + 1 ?? 1
+    return [
+      {
+        PutRequest: {
+          Item: withDate({...item, sort: 'v0'}),
+        },
+      },
+      {
+        PutRequest: {
+          Item: withDate({...item, sort: `v${newVersion}`}),
+        },
+      },
+      {
+        PutRequest: {
+          Item: {...metadata[item.id], currentVersion: newVersion},
+        },
+      },
+    ]
+  })
+  // Unversioned database items (like collections) just get directly overwritten
+  const unversionedPutRequests = unversionedItems?.map((item) => ({
+    PutRequest: {
+      Item: withDate(item),
+    },
+  }))
+  const batches = _.chunk([...unversionedPutRequests, ...versionedPutRequests], batchSize)
+  const batchRequests = batches?.map(async (batch, i) => {
+    const cmd = new BatchWriteCommand({
+      RequestItems: {
+        [table]: batch,
+      },
+    })
+    await ddbDocClient.send(cmd).then(() => {
+      logger.log(`Batch ${i + 1} / ${batches.length} written with ${batch.length} items`)
+    })
+  })
+  await Promise.all(batchRequests)
+  const validated = [...versionedItems, ...unversionedItems]
+  const uniqueTypes = _.uniq(validated?.map((item) => item?.type ?? item?.ctype).filter(notEmpty))
+  await putTypes(uniqueTypes, batchSize)
+  return { itemCount: validated.length }
+}
+
 const validateItems = (items: any[]) => {
   if (!items || !Array.isArray(items) || items?.length <= 0) {
     throw new Error('No valid items')
   }
-  const validated: Item[] = items?.filter(isValidItem) ?? []
-  return validated
+  const validVersionedItems: Item[] = items?.filter(isValidItem)?.filter(isVersioned) ?? []
+  const validUnversionedItems: Item[] = items?.filter(isValidItem)?.filter(i => !isVersioned(i)) ?? []
+  return [validVersionedItems, validUnversionedItems]
+}
+
+const isVersioned = (item: Item) => {
+  return (item?.sort?.match(/v[0-9]+/))
 }
 
 const isValidItem = (item: Item) => {
@@ -155,33 +234,18 @@ const isValidItem = (item: Item) => {
   return false
 }
 
-export const batchWriteFromJson = async (items: any[]) => {
-  return batchWrite(items)
-}
-
-export const batchWriteFromJsonString = async (data: string) => {
-  const items = JSON.parse(data)
-  return batchWriteFromJson(items)
-}
-
-export const batchWriteFromFile = async (path: string) => {
-  const data = fs.readFileSync(path, 'utf8')
-  return batchWriteFromJsonString(data)
-}
-
-export interface ItemKey {
-  id: any
-  sort?: any
-}
-
-export type Item = ItemKey & {
-  [key: string]: any
-}
-
 const withDate = (item: Item) => {
-  // Prefer user supplied modification date
-  const itemWithDate = { modified: new Date().getTime(), ...item }
+  const itemWithDate = { ...item, modified: new Date().getTime() }
   return itemWithDate
+}
+
+export const getItem = async (key: ItemKey) => {
+  const cmd = new GetCommand({
+    TableName: table,
+    Key: key,
+  })
+  const resp = await ddbDocClient.send(cmd)
+  return resp?.Item
 }
 
 export const putItem = async (item: Item) => {
@@ -236,15 +300,6 @@ export const queryItem = async (key: ItemKey) => {
   const items = resp?.Items
   const lastKey = resp?.LastEvaluatedKey
   return { items: items, lastKey: lastKey }
-}
-
-export const getItem = async (key: ItemKey) => {
-  const cmd = new GetCommand({
-    TableName: table,
-    Key: key,
-  })
-  const resp = await ddbDocClient.send(cmd)
-  return resp?.Item
 }
 
 // TODO could decrypt startKey and encrypt lastKey
@@ -318,4 +373,31 @@ const putTypes = async (types: string[], batchSize = 35) => {
     })
   })
   await Promise.all(batchRequests)
+}
+
+export const queryItemVersions = async (
+  id: string,
+  startKey?: any,
+  limit?: number,
+  ascendingSortKey?: boolean
+) => {
+  const cmd = new QueryCommand({
+    TableName: table,
+    ExpressionAttributeNames: {
+      "#id": 'id',
+      "#sort": 'sort',
+    },
+    ExpressionAttributeValues: {
+      ':id': id,
+      ':sort': 'v',
+    },
+    KeyConditionExpression: '#id = :id and begins_with(#sort, :sort)',
+    ExclusiveStartKey: startKey,
+    Limit: limit,
+    ScanIndexForward: ascendingSortKey,
+  })
+  const resp = await ddbDocClient.send(cmd)
+  const items = resp?.Items
+  const lastKey = resp?.LastEvaluatedKey
+  return { items: items, lastKey: lastKey }
 }

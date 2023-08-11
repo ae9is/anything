@@ -22,6 +22,14 @@ getItem:
         method: get
         authorizer:
           type: aws_iam
+getItemVersions:
+  handler: src/modules/item/item_handler.itemVersionsById
+  events:
+    - httpApi:
+        path: /v1/items/{id}/versions
+        method: get
+        authorizer:
+          type: aws_iam
 postItem:
   handler: src/modules/item/item_handler.upsertItem
   events:
