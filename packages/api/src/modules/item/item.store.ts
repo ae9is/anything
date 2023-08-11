@@ -1,11 +1,12 @@
 import _ from 'lodash'
 import { gsi1, gsi1Id } from '../../services/dynamodb'
 import {
-  deleteItem as deleteItm,
   queryByTypeAndFilter,
   ItemKey,
   getItem,
   batchGet,
+  softDeleteItem,
+  putItem,
 } from '../../store/store'
 import { Filter } from 'utils'
 import { getCollectionById } from '../collection/collection.store'
@@ -27,7 +28,7 @@ export const deleteItem = async (id: string) => {
     id: id,
     sort: 'v0',
   }
-  return deleteItm(item)
+  return softDeleteItem(item)
 }
 
 export const getItemById = async (id: string) => {
@@ -38,8 +39,21 @@ export const getItemById = async (id: string) => {
   return getItem(key)
 }
 
-export const getItemVersionsById = async (id: string) => {
-  throw new Error('Not implemented!')
+export const getItemMetadataById = async (id: string) => {
+  const key: ItemKey = {
+    id,
+    sort: '@meta',
+  }
+  return getItem(key)
+}
+
+export const setItemMetadataById = async (id: string, metadata: any) => {
+  const item = {
+    id,
+    sort: '@meta',
+    body: metadata,
+  }
+  return putItem(item)
 }
 
 export const getItemsByTypeAndFilter = async (

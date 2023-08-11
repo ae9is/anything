@@ -58,18 +58,68 @@ export const loadTestData = async () => {
   return batchWriteFromFile(testDataFilePath)
 }
 
-export const batchWrite = async (items: Item[], batchSize = 25) => {
-  const validated = validateItems(items)
-  const diff = items?.length - validated?.length ?? 0
+export const batchWrite = async (itemsOrCollections: Item[], batchSize = 25) => {
+  const [versionedItems, unversionedItems] = validateItems(itemsOrCollections)
+  const diff = itemsOrCollections?.length - (versionedItems?.length ?? 0) - (unversionedItems?.length ?? 0)
   if (diff > 0) {
     logger.log(`Warning: ${diff} items did not pass validation`)
   }
-  const putRequests = validated?.map((item) => ({
+  // Versioned database items (like items) need to have their item metadata read to determine current version
+  const versionedItemsMetadataKeys: ItemKey[] = versionedItems?.map((item) => {
+    return {
+      id: item.id,
+      sort: '@meta',
+    }
+  })
+  logger.debug(`Fetching metadata for ${versionedItemsMetadataKeys?.length} versioned items ...`)
+  const currentVersionedItemsMetadata = await batchGet(versionedItemsMetadataKeys)
+  const metadata: Record<string, any> = {}
+  currentVersionedItemsMetadata.items?.forEach((itemMeta) => {
+    const id = itemMeta.id
+    metadata[id] = itemMeta
+  })
+  // Fill in new metadata version for new versioned items missing it
+  versionedItems?.forEach((item) => {
+    if (!metadata[item.id]) {
+      metadata[item.id] = {
+        id: item.id,
+        sort: '@meta',
+        currentVersion: 0,
+      }
+    }
+  })
+  logger.debug('Metadata: ', metadata)
+  // Write 3 requests for each versioned item:
+  // - Update metadata version
+  // - Update current item
+  // - Update archived (versioned) copy of item
+  const versionedPutRequests = versionedItems?.flatMap((item) => {
+    const newVersion = metadata[item?.id]?.currentVersion + 1 ?? 1
+    return [
+      {
+        PutRequest: {
+          Item: withDate({...item, sort: 'v0'}),
+        },
+      },
+      {
+        PutRequest: {
+          Item: withDate({...item, sort: `v${newVersion}`}),
+        },
+      },
+      {
+        PutRequest: {
+          Item: {...metadata[item.id], currentVersion: newVersion},
+        },
+      },
+    ]
+  })
+  // Unversioned database items (like collections) just get directly overwritten
+  const unversionedPutRequests = unversionedItems?.map((item) => ({
     PutRequest: {
       Item: withDate(item),
     },
   }))
-  const batches = _.chunk(putRequests, batchSize)
+  const batches = _.chunk([...unversionedPutRequests, ...versionedPutRequests], batchSize)
   const batchRequests = batches?.map(async (batch, i) => {
     const cmd = new BatchWriteCommand({
       RequestItems: {
@@ -81,7 +131,8 @@ export const batchWrite = async (items: Item[], batchSize = 25) => {
     })
   })
   await Promise.all(batchRequests)
-  const uniqueTypes = _.uniq(validated?.map(item => item?.type ?? item?.ctype).filter(notEmpty))
+  const validated = [...versionedItems, ...unversionedItems]
+  const uniqueTypes = _.uniq(validated?.map((item) => item?.type ?? item?.ctype).filter(notEmpty))
   await putTypes(uniqueTypes, batchSize)
   return { itemCount: validated.length }
 }
@@ -126,8 +177,13 @@ const validateItems = (items: any[]) => {
   if (!items || !Array.isArray(items) || items?.length <= 0) {
     throw new Error('No valid items')
   }
-  const validated: Item[] = items?.filter(isValidItem) ?? []
-  return validated
+  const validVersionedItems: Item[] = items?.filter(isValidItem)?.filter(isVersioned) ?? []
+  const validUnversionedItems: Item[] = items?.filter(isValidItem)?.filter(i => !isVersioned(i)) ?? []
+  return [validVersionedItems, validUnversionedItems]
+}
+
+const isVersioned = (item: Item) => {
+  return (item?.sort?.match(/v[0-9]+/))
 }
 
 const isValidItem = (item: Item) => {
