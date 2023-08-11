@@ -1,10 +1,16 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda'
-import { middyfy } from '../../lib/middy'
-import { batchWriteFromJson, putItem } from '../../store/store'
 import { Filter, parse } from 'utils'
-import { deleteItem as deleteItm, getItemMetadataById, setItemMetadataById } from './item.store'
-import { getItemById, getItemsByCollection, getItemsByTypeAndFilter } from './item.store'
+import { middyfy } from '../../lib/middy'
 import { changeBatch, changeById, deleteById, getById, getByIdAndQuery } from '../../lib/routing'
+import { batchWriteFromJson, putItem, queryItemVersions } from '../../store/store'
+import {
+  deleteItem as deleteItm,
+  getItemMetadataById,
+  setItemMetadataById,
+  getItemById,
+  getItemsByCollection,
+  getItemsByTypeAndFilter,
+} from './item.store'
 
 export const itemById = middyfy(async (event: APIGatewayProxyEventV2) => {
   return getById(event, resolveItemById)
@@ -12,6 +18,14 @@ export const itemById = middyfy(async (event: APIGatewayProxyEventV2) => {
 
 async function resolveItemById(id: string) {
   return getItemById(id)
+}
+
+export const itemVersionsById = middyfy(async (event: APIGatewayProxyEventV2) => {
+  return getById(event, resolveItemVersionsById)
+})
+
+async function resolveItemVersionsById(id: string) {
+  return queryItemVersions(id)
 }
 
 export const itemsByCollection = middyfy(async (event: APIGatewayProxyEventV2) => {
@@ -68,7 +82,7 @@ async function resolveUpsertItem(id: string, body: any) {
     sort: 'v0',
     ...body,
   })
-  return setItemMetadataById(id, {...metadata, currentVersion: newVersion})
+  return setItemMetadataById(id, { ...metadata, currentVersion: newVersion })
 }
 
 export const upsertBatchItems = middyfy(async (event: APIGatewayProxyEventV2) => {
@@ -77,7 +91,7 @@ export const upsertBatchItems = middyfy(async (event: APIGatewayProxyEventV2) =>
 
 async function resolveUpsertBatchItems(body: any) {
   // Batch writing any objects into the main table means that the user can use this route to write collections.
-  // But to disallow posting collections via /items, could prevalidate here or change batchWriteFromJson to take 
+  // But to disallow posting collections via /items, could prevalidate here or change batchWriteFromJson to take
   //  an additional validation function as a parameter.
   return batchWriteFromJson(body)
 }

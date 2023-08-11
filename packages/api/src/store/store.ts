@@ -375,3 +375,30 @@ const putTypes = async (types: string[], batchSize = 35) => {
   })
   await Promise.all(batchRequests)
 }
+
+export const queryItemVersions = async (
+  id: string,
+  startKey?: any,
+  limit?: number,
+  ascendingSortKey?: boolean
+) => {
+  const cmd = new QueryCommand({
+    TableName: table,
+    ExpressionAttributeNames: {
+      "#id": 'id',
+      "#sort": 'sort',
+    },
+    ExpressionAttributeValues: {
+      ':id': id,
+      ':sort': 'v',
+    },
+    KeyConditionExpression: '#id = :id and begins_with(#sort, :sort)',
+    ExclusiveStartKey: startKey,
+    Limit: limit,
+    ScanIndexForward: ascendingSortKey,
+  })
+  const resp = await ddbDocClient.send(cmd)
+  const items = resp?.Items
+  const lastKey = resp?.LastEvaluatedKey
+  return { items: items, lastKey: lastKey }
+}
