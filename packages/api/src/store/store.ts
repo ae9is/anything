@@ -19,6 +19,15 @@ import logger from 'logger'
 import { Filter, notEmpty } from 'utils'
 import { ddbClient, ddbDocClient, schema, table, testDataFilePath, typesTable } from '../services/dynamodb'
 
+export interface ItemKey {
+  id: any
+  sort?: any
+}
+
+export type Item = ItemKey & {
+  [key: string]: any
+}
+
 // One table schema
 export const createSchema = async () => {
   await ddbClient.send(new CreateTableCommand(schema))
@@ -56,6 +65,56 @@ export const dropSchema = async () => {
 
 export const loadTestData = async () => {
   return batchWriteFromFile(testDataFilePath)
+}
+
+export const batchGet = async (keys: ItemKey[], batchSize = 50, projectionExpression?: string) => {
+  const items: Record<string, any>[] = []
+  let errorCount = 0
+  const batches = _.chunk(keys, batchSize)
+  const batchRequests = batches?.map(async (batch, i) => {
+    const keys = {
+      Keys: batch,
+      ProjectionExpression: projectionExpression,
+    }
+    const cmd = new BatchGetCommand({
+      RequestItems: {
+        [table]: keys,
+      },
+    })
+    const output: BatchGetCommandOutput = await ddbDocClient.send(cmd)
+    const responses = output?.Responses || {}
+    for (const responseItems of Object.values(responses)) {
+      for (const item of responseItems) {
+        items.push(item)
+      }
+    }
+    logger.log(`Batch ${i + 1} / ${batches.length} retrieved`)
+    const unprocessedKeys = output?.UnprocessedKeys
+    // Could also retry fetching keys first, instead of just warning
+    if (unprocessedKeys) {
+      const numUnprocessed = Object.keys(unprocessedKeys)?.length
+      if (numUnprocessed > 0) {
+        logger.log(`Failed to retrieve ${unprocessedKeys?.length} keys`)
+        errorCount += numUnprocessed
+      }
+    }
+  })
+  await Promise.all(batchRequests)
+  return { items: items, errorCount }
+}
+
+export const batchWriteFromFile = async (path: string) => {
+  const data = fs.readFileSync(path, 'utf8')
+  return batchWriteFromJsonString(data)
+}
+
+export const batchWriteFromJsonString = async (data: string) => {
+  const items = JSON.parse(data)
+  return batchWriteFromJson(items)
+}
+
+export const batchWriteFromJson = async (items: any[]) => {
+  return batchWrite(items)
 }
 
 export const batchWrite = async (itemsOrCollections: Item[], batchSize = 25) => {
@@ -137,42 +196,6 @@ export const batchWrite = async (itemsOrCollections: Item[], batchSize = 25) => 
   return { itemCount: validated.length }
 }
 
-export const batchGet = async (keys: ItemKey[], batchSize = 50, projectionExpression?: string) => {
-  const items: Record<string, any>[] = []
-  let errorCount = 0
-  const batches = _.chunk(keys, batchSize)
-  const batchRequests = batches?.map(async (batch, i) => {
-    const keys = {
-      Keys: batch,
-      ProjectionExpression: projectionExpression,
-    }
-    const cmd = new BatchGetCommand({
-      RequestItems: {
-        [table]: keys,
-      },
-    })
-    const output: BatchGetCommandOutput = await ddbDocClient.send(cmd)
-    const responses = output?.Responses || {}
-    for (const responseItems of Object.values(responses)) {
-      for (const item of responseItems) {
-        items.push(item)
-      }
-    }
-    logger.log(`Batch ${i + 1} / ${batches.length} retrieved`)
-    const unprocessedKeys = output?.UnprocessedKeys
-    // Could also retry fetching keys first, instead of just warning
-    if (unprocessedKeys) {
-      const numUnprocessed = Object.keys(unprocessedKeys)?.length
-      if (numUnprocessed > 0) {
-        logger.log(`Failed to retrieve ${unprocessedKeys?.length} keys`)
-        errorCount += numUnprocessed
-      }
-    }
-  })
-  await Promise.all(batchRequests)
-  return { items: items, errorCount }
-}
-
 const validateItems = (items: any[]) => {
   if (!items || !Array.isArray(items) || items?.length <= 0) {
     throw new Error('No valid items')
@@ -211,33 +234,19 @@ const isValidItem = (item: Item) => {
   return false
 }
 
-export const batchWriteFromJson = async (items: any[]) => {
-  return batchWrite(items)
-}
-
-export const batchWriteFromJsonString = async (data: string) => {
-  const items = JSON.parse(data)
-  return batchWriteFromJson(items)
-}
-
-export const batchWriteFromFile = async (path: string) => {
-  const data = fs.readFileSync(path, 'utf8')
-  return batchWriteFromJsonString(data)
-}
-
-export interface ItemKey {
-  id: any
-  sort?: any
-}
-
-export type Item = ItemKey & {
-  [key: string]: any
-}
-
 const withDate = (item: Item) => {
   // Prefer user supplied modification date
   const itemWithDate = { modified: new Date().getTime(), ...item }
   return itemWithDate
+}
+
+export const getItem = async (key: ItemKey) => {
+  const cmd = new GetCommand({
+    TableName: table,
+    Key: key,
+  })
+  const resp = await ddbDocClient.send(cmd)
+  return resp?.Item
 }
 
 export const putItem = async (item: Item) => {
@@ -292,15 +301,6 @@ export const queryItem = async (key: ItemKey) => {
   const items = resp?.Items
   const lastKey = resp?.LastEvaluatedKey
   return { items: items, lastKey: lastKey }
-}
-
-export const getItem = async (key: ItemKey) => {
-  const cmd = new GetCommand({
-    TableName: table,
-    Key: key,
-  })
-  const resp = await ddbDocClient.send(cmd)
-  return resp?.Item
 }
 
 // TODO could decrypt startKey and encrypt lastKey
