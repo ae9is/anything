@@ -2,6 +2,7 @@
 //  for option labels and values)
 
 import ReactSelect, { ActionMeta, GroupBase, SingleValue, StylesConfig, Theme } from 'react-select'
+import CreatableSelect from 'react-select/creatable'
 import { join } from '../../lib/style'
 
 export interface ArraySelectProps {
@@ -10,6 +11,9 @@ export interface ArraySelectProps {
   id?: string
   onChange?: (newValue?: string) => void
   className?: string
+  newOptionsAllowed?: boolean
+  isCreatingNewOption?: boolean
+  onCreateOption?: (newValue?: string) => void
 }
 
 type Option = {
@@ -24,6 +28,9 @@ export function ArraySelect({
   className,
   options,
   value,
+  newOptionsAllowed = false,
+  isCreatingNewOption = false,
+  onCreateOption,
   ...props
 }: ArraySelectProps) {
   const selectOptions: Option[] = options.map((value) => {
@@ -33,11 +40,11 @@ export function ArraySelect({
     }
   })
 
-//  if (!value) {
-//    value = options?.[0]
-//    // If a default value is set, then it needs to be passed up
-//    onChange?.(value)
-//  }
+  //  if (!value) {
+  //    value = options?.[0]
+  //    // If a default value is set, then it needs to be passed up
+  //    onChange?.(value)
+  //  }
 
   const selectedOption: Option = {
     value: value ?? '',
@@ -87,7 +94,7 @@ export function ArraySelect({
     option: (provided, { isDisabled, isFocused, isSelected }) => ({
       ...provided,
       //backgroundColor: isDisabled ? undefined : isFocused ? 'hsl(var(--pf))' : isSelected ? 'hsl(var(--p))' : undefined,
-      color: isDisabled ? undefined : (isFocused || isSelected) ? 'hsl(var(--pc))' : undefined,
+      color: isDisabled ? undefined : isFocused || isSelected ? 'hsl(var(--pc))' : undefined,
     }),
   }
 
@@ -102,8 +109,9 @@ export function ArraySelect({
         primary50: 'hsl(var(--p) / 0.50)',
         primary25: 'hsl(var(--p) / 0.25)', // Option hover background colour
         neutral0: 'hsl(var(--b1))', // Background colour
-        neutral80: 'hsl(var(--bc))', // Sets placeholder (label) font colour
-        //neutral5: 'hsl(var(--b1) / 0.95)',
+        neutral20: 'hsl(var--b1) / 0.2', // Dropdown and loading indicator font colour
+        neutral80: 'hsl(var(--bc))', // Placeholder (label) font colour
+        neutral5: 'hsl(var(--b1) / 0.95)', // Sets background colour of creatable select input while creating new option
         //neutral10: 'hsl(var(--b1) / 0.9)',
         //neutral20: 'hsl(var(--b1) / 0.8)',
         //neutral30: 'hsl(var(--b1) / 0.7)',
@@ -119,20 +127,31 @@ export function ArraySelect({
     }
   }
 
-  return (
+  const sharedProps = {
+    inputId: id,
+    options: selectOptions,
+    getOptionLabel: (opt: Option) => opt.label,
+    getOptionValue: (opt: Option) => opt.value,
+    value: selectedOption,
+    onChange: handleChange,
+    className: join('h-12', className),
+    styles: customStyles,
+    theme: customTheme,
+    placeholder: 'Select a value',
+    ...props
+  }
+
+  return newOptionsAllowed ? (
+    <CreatableSelect
+      isDisabled={isCreatingNewOption}
+      isLoading={isCreatingNewOption}
+      onCreateOption={onCreateOption}
+      {...sharedProps}
+    />
+  ) : (
     <ReactSelect
-      inputId={id}
-      options={selectOptions}
-      getOptionLabel={(opt: Option) => opt.label}
-      getOptionValue={(opt: Option) => opt.value}
-      value={selectedOption}
-      onChange={handleChange}
       isSearchable
-      className={join('h-12', className)}
-      styles={customStyles}
-      theme={customTheme}
-      placeholder={'Select a value'}
-      {...props}
+      {...sharedProps}
     />
   )
 }

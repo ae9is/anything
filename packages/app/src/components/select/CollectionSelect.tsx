@@ -2,9 +2,10 @@
 'use client'
 
 import logger from 'logger'
-import { invalidate, queries, useMutation } from '../../data'
+import { invalidate, queries, requestQuery, useMutation } from '../../data'
 import { ModalButton } from '../button/ModalButton'
 import { LoadingSelect } from './LoadingSelect'
+import { useState } from 'react'
 
 export interface CollectionSelectProps {
   type: string
@@ -32,7 +33,7 @@ export function CollectionSelect({ type, value, onChange, onLoad }: CollectionSe
     }
   }
 
-  const { error, trigger, isMutating } = useMutation(queries.deleteCollection, {
+  const { error: delError, trigger: delTrigger, isMutating: isDeleting } = useMutation(queries.deleteCollection, {
     id: value,
   })
 
@@ -40,9 +41,9 @@ export function CollectionSelect({ type, value, onChange, onLoad }: CollectionSe
     if (value) {
       logger.debug('Deleting collection: ', value)
       try {
-        await trigger()
-        if (error) {
-          throw new Error(error)
+        await delTrigger()
+        if (delError) {
+          throw new Error(delError)
         }
         handleReset()
         // Also need to refresh collections by type data, since a collection was just deleted
@@ -54,6 +55,33 @@ export function CollectionSelect({ type, value, onChange, onLoad }: CollectionSe
     }
   }
 
+  const [isCreating, setIsCreating] = useState(false)
+
+  async function handleCreate(newValue?: string) {
+    setIsCreating(true)
+    if (newValue) {
+      logger.debug('Creating new collection: ', newValue)
+      try {
+        const newCollectionProps = {
+          ctype: type,
+          itemIds: [],
+        }
+        const res = await requestQuery(queries.putCollection, {
+          id: newValue,
+          body: newCollectionProps,
+        })
+        if (!res) {
+          throw new Error()
+        }
+        handleChange(newValue)
+      } catch (e) {
+        logger.error('Error creating collection')
+        logger.error(e)
+      }
+    }
+    setIsCreating(false)
+  }
+
   return (
     <div className="w-full flex flex-col lg:flex-row lg:items-end">
       <LoadingSelect
@@ -62,6 +90,9 @@ export function CollectionSelect({ type, value, onChange, onLoad }: CollectionSe
         queryResultMapper={queryResultMapper}
         value={value}
         onChange={handleChange}
+        newOptionsAllowed={true}
+        isCreatingNewOption={isDeleting || isCreating}
+        onCreateOption={handleCreate}
       />
       <button className="mt-4 lg:mt-0 lg:ml-4 btn btn-neutral" type="submit" onClick={handleReset}>
         Reset
@@ -70,7 +101,7 @@ export function CollectionSelect({ type, value, onChange, onLoad }: CollectionSe
         Load
       </button>
       <ModalButton
-        disabled={isMutating}
+        disabled={isDeleting}
         buttonText="Delete"
         modalTitle="Delete Collection"
         modalText="Are you sure you want to delete this collection? (The items in it won't be touched.)"
