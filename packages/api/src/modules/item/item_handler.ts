@@ -60,7 +60,6 @@ export const deleteItem = middyfy(async (event: APIGatewayProxyEventV2) => {
 })
 
 async function resolveDeleteItem(id: string) {
-  // Soft delete, marks v0 with deleted flag
   return deleteItm(id)
 }
 
