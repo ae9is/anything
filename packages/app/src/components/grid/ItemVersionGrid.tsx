@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import {
   DataGridPremium,
   GridColDef,
@@ -6,6 +5,7 @@ import {
 import { queries, useQuery } from '../../data'
 import { isDefaultThemeActive } from '../../lib/theme'
 import { useColumns } from './useColumns'
+import { useRowsFromData } from './useRowsFromData'
 
 export interface ItemVersionGridProps {
   id: string
@@ -16,7 +16,7 @@ export function ItemVersionGrid({
 }: ItemVersionGridProps) {
   const isDefaultTheme = isDefaultThemeActive()
   const { data, error, isLoading } = useQuery(queries.getItemVersions, {id})
-  const rows: any[] = useMemo(() => data?.items || [], [data])
+  const rows: any[] = useRowsFromData(data)
   const cols: GridColDef[] = useColumns(rows)
 
   return (
