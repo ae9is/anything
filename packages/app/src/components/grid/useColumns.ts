@@ -4,9 +4,20 @@ import { notEmpty } from 'utils'
 
 export function useColumns(rows: any[]) {
   const cols: GridColDef[] = useMemo(() => {
-    const idHeader = {
-      field: 'id',
-    }
+    const fixedHeaders = [
+      {
+        field: 'id',
+      },
+      {
+        field: 'sort',
+        width: 50,
+      },
+      {
+        field: 'modified',
+        type: 'dateTime',
+        width: 180,
+      },
+    ]
     let colNames: string[] = []
     if (rows?.length > 0) {
       colNames = Array.from<string>(
@@ -20,14 +31,15 @@ export function useColumns(rows: any[]) {
     }
     let headers: GridColDef[] = colNames
       .map((name) => {
-        if (name !== 'id') {
+        if (name !== 'id' && name !== 'modified' && name !== 'sort') {
           return {
             field: name,
+            editable: true,
           }
         }
       })
       .filter(notEmpty)
-    return [idHeader, ...headers]
+    return [...fixedHeaders, ...headers]
   }, [rows])
   return cols
 }
