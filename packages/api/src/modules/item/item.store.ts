@@ -58,9 +58,9 @@ export const getItemMetadataById = async (id: string) => {
 
 export const setItemMetadataById = async (id: string, metadata: any) => {
   const item = {
+    ...metadata,
     id,
     sort: '@meta',
-    body: metadata,
   }
   return putItem(item)
 }
@@ -73,4 +73,21 @@ export const getItemsByTypeAndFilter = async (
   ascendingSortKey = false
 ) => {
   return queryByTypeAndFilter(type, filter, startKey, gsi1, gsi1Id, limit, ascendingSortKey)
+}
+
+export const upsertItem = async (id: string, body: any) => {
+  const metadata = await getItemMetadataById(id)
+  const currentVersion = metadata?.currentVersion ?? 0
+  const newVersion = currentVersion + 1
+  await putItem({
+    ...body,
+    id,
+    sort: `v${newVersion}`,
+  })
+  await putItem({
+    ...body,
+    id,
+    sort: 'v0',
+  })
+  return setItemMetadataById(id, { ...metadata, currentVersion: newVersion })
 }
