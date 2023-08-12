@@ -12,7 +12,6 @@ export function Modal({
   modalText = 'Are you sure?',
   onConfirm,
   children,
-  ...rest
 }: ModalProps) {
   const modalRef = useRef<HTMLDialogElement>(null)
 
@@ -29,7 +28,7 @@ export function Modal({
       <div onClick={showModal}>
         {children}
       </div>
-      <dialog ref={modalRef} className="modal" {...rest}>
+      <dialog ref={modalRef} className="modal">
         <form method="dialog" className="modal-box">
           <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
           {modalTitle && (<h3 className="font-bold text-lg">{modalTitle}</h3>)}
