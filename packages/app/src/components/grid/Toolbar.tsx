@@ -1,10 +1,6 @@
 import { useState } from 'react'
 import { Button, Menu, MenuItem } from '@mui/material'
-import {
-  GridRowSelectionModel,
-  GridToolbar,
-  GridToolbarContainer,
-} from '@mui/x-data-grid-premium'
+import { GridRowSelectionModel, GridToolbar, GridToolbarContainer } from '@mui/x-data-grid-premium'
 import HistoryIcon from '@mui/icons-material/History'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
@@ -48,12 +44,6 @@ export function Toolbar({
   return (
     <GridToolbarContainer>
       <GridToolbar />
-      {/*
-      <GridToolbarColumnsButton />
-      <GridToolbarFilterButton />
-      <GridToolbarDensitySelector />
-      <GridToolbarExport />
-      */}
       <GridToolbarContainer>
         <Button
           size="small"
@@ -81,8 +71,12 @@ export function Toolbar({
             setAnchor(undefined)
           }}
         >
-          <MenuItem onClick={handleAdd}><AddIcon /> Add selected</MenuItem>
-          <MenuItem onClick={handleRemove}><RemoveIcon /> Remove selected</MenuItem>
+          <MenuItem onClick={handleAdd}>
+            <AddIcon /> Add selected
+          </MenuItem>
+          <MenuItem onClick={handleRemove}>
+            <RemoveIcon /> Remove selected
+          </MenuItem>
         </Menu>
       </GridToolbarContainer>
     </GridToolbarContainer>

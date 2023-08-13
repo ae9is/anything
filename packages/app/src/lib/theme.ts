@@ -1,23 +1,25 @@
 // prettier-ignore
 'use client'
 
-import { createTheme } from "@mui/material"
+import { createTheme } from '@mui/material'
 
 // These themes should be in tailwind.config.js under daisyui themes
 export const defaultTheme = 'dark'
 export const altTheme = 'light'
 export const initialTheme =
-  typeof window !== 'undefined' ? window?.localStorage?.getItem('theme') || defaultTheme : defaultTheme
+  typeof window !== 'undefined'
+    ? window?.localStorage?.getItem('theme') || defaultTheme
+    : defaultTheme
 
 export function isDefaultThemeActive() {
   return document.documentElement.getAttribute('data-theme') === defaultTheme
 }
 
 // Passes some daisyUI theme colours into MUI's theme.
-// MUI palette has { main, light, dark, contrastText }, 
+// MUI palette has { main, light, dark, contrastText },
 // daisyUI palette has { colour, colour-focus [dark], colour-content [contrastText] }.
 // Omit light shades to let MUI calculate them.
-// 
+//
 // ref: https://mui.com/material-ui/customization/palette/
 // ref: https://daisyui.com/docs/colors/
 export const muiTheme = createTheme({
@@ -47,13 +49,12 @@ export const muiTheme = createTheme({
     success: {
       main: 'hsl(var(--su))',
       contrastText: 'hsl(var(--suc))',
-    }
-  }
+    },
+  },
 })
 
 // ref: https://mui.com/x/react-data-grid/style/
 // Unfortunately need to set custom styling for data grid even with MUI theme specified.
-// Selectors have added specificity just to beat out conflicting MUI styling.
 export const dataGridThemeFixes = {
   '& .actions': {
     color: 'hsl(var(--p))',
@@ -78,10 +79,6 @@ export const dataGridThemeFixes = {
       '& .MuiDataGrid-editInputCell': {
         color: 'unset',
       },
-      //'&:hover': {},
-      //'&.Mui-selected': {
-      //  '&:hover': {},
-      //},
     },
   },
 }

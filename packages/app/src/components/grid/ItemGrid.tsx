@@ -108,8 +108,7 @@ export function ItemGrid({
             //onClick={() => onDelete(id)}
             color="inherit"
           />
-        </Modal>
-        ,
+        </Modal>,
       ]
     },
   }
@@ -129,25 +128,25 @@ export function ItemGrid({
   }, [rowSelectionModel])
   const first = selectedItemIds?.[0]
 
-  const {
-    trigger: addTrigger,
-    isMutating: addIsMutating,
-  } = useMutation(queries.addItemsToCollection, {
-    id: collection,
-    body: {
-      itemIds: selectedItemIds,
-    },
-  })
+  const { trigger: addTrigger, isMutating: addIsMutating } = useMutation(
+    queries.addItemsToCollection,
+    {
+      id: collection,
+      body: {
+        itemIds: selectedItemIds,
+      },
+    }
+  )
 
-  const {
-    trigger: remTrigger,
-    isMutating: remIsMutating,
-  } = useMutation(queries.removeItemsFromCollection, {
-    id: collection,
-    body: {
-      itemIds: selectedItemIds,
-    },
-  })
+  const { trigger: remTrigger, isMutating: remIsMutating } = useMutation(
+    queries.removeItemsFromCollection,
+    {
+      id: collection,
+      body: {
+        itemIds: selectedItemIds,
+      },
+    }
+  )
 
   async function onAddSelectedToCollection() {
     logger.debug(`Adding selected items to collection ${collection}: `, rowSelectionModel)
@@ -184,15 +183,18 @@ export function ItemGrid({
   } = useMutation(queries.deleteItem, { id: first })
 
   function onEdit(id: GridRowId) {
-    setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.Edit }})
+    setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.Edit } })
   }
 
   function onCancelEdit(id: GridRowId) {
-    setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View, ignoreModifications: true }})
+    setRowModesModel({
+      ...rowModesModel,
+      [id]: { mode: GridRowModes.View, ignoreModifications: true },
+    })
   }
 
   function onSaveEdit(id: GridRowId) {
-    setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View }})
+    setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } })
   }
 
   async function onConfirmDelete() {
