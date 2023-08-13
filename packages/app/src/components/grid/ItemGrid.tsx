@@ -28,19 +28,19 @@ import { Toolbar } from './Toolbar'
 import { useColumns } from './useColumns'
 import { useRowsFromData } from './useRowsFromData'
 
-export interface DataGridProps {
+export interface ItemGridProps {
   loadCollection?: boolean
   collection?: string
   type: string
   filter?: Filter
 }
 
-export function DataGrid({
+export function ItemGrid({
   loadCollection,
   collection,
   type,
   filter = defaultFilter,
-}: DataGridProps) {
+}: ItemGridProps) {
   const query = queries.listItemsByCollection
   const queryOpts = {
     id: loadCollection ? collection : undefined,
