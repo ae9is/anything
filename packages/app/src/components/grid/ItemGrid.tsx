@@ -22,7 +22,7 @@ import { useRouter } from 'next/navigation'
 import { Filter, defaultFilter, stringify, notEmpty } from 'utils'
 import logger from 'logger'
 import { invalidate, queries, requestQuery, useConditionalQuery, useMutation } from '../../data'
-import { muiTheme } from '../../lib/theme'
+import { dataGridThemeFixes, muiTheme } from '../../lib/theme'
 import { Modal } from '../modal/Modal'
 import { Toolbar } from './Toolbar'
 import { useColumns } from './useColumns'
@@ -253,51 +253,7 @@ export function ItemGrid({
         {error && <div className="text-error">Error</div>}
         {isLoading && <div className="text">Loading...</div>}
         {!error && !isLoading && (
-          <Box sx={{
-            // ref: https://mui.com/x/react-data-grid/style/
-            // Unfortunately need to set custom styling for data grid even with MUI theme specified.
-            // Selectors have added specificity just to beat out conflicting MUI styling.
-            '& .actions': {
-              color: 'hsl(var(--p))',
-            },
-            '& .MuiDataGrid-row > .MuiDataGrid-cell': {
-              color: 'hsl(var(--bc))',
-              backgroundColor: 'unset',
-            },
-            '& .MuiDataGrid-row.MuiDataGrid-row--editable.Mui-selected': {
-              color: 'hsl(var(--pc))',
-              backgroundColor: 'hsl(var(--p) / 0.3)',
-            },
-            '& .MuiDataGrid-row.MuiDataGrid-row--editable.Mui-selected:hover': {
-              backgroundColor: 'hsl(var(--pf) / 0.3)',
-            },
-            '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing': {
-              color: 'hsl(var(--nc))',
-              backgroundColor: 'hsl(var(--n))',
-            },
-            '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing.Mui-selected': {
-              backgroundColor: 'hsl(var(--nf) / 0.8)',
-            },
-            '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing.Mui-selected:hover': {
-              backgroundColor: 'hsl(var(--nf))',
-            },
-            '& .MuiDataGrid-row.MuiDataGrid-row--editable:hover': {
-              color: 'hsl(var(--pc))',
-              backgroundColor: 'hsl(var(--pf) / 0.1)',
-            },
-            '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing input': {
-              color: 'hsl(var(--nc))',
-            },
-            '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing.Mui-selected input': {
-              backgroundColor: 'unset',
-            },
-            '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing.Mui-selected > div': {
-              backgroundColor: 'unset',
-            },
-            '& .MuiDataGrid-cell.MuiDataGrid-cell--editing': {
-              backgroundColor: 'unset',
-            },
-          }}>
+          <Box sx={dataGridThemeFixes}>
             <DataGridPremium
               style={{
                 color: 'hsl(var(--bc))',
