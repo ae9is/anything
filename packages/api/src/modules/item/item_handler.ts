@@ -5,8 +5,7 @@ import { changeBatch, changeById, deleteById, getById, getByIdAndQuery } from '.
 import { batchWriteFromJson, putItem, queryItemVersions } from '../../store/store'
 import {
   deleteItem as deleteItm,
-  getItemMetadataById,
-  setItemMetadataById,
+  upsertItem as upsertItm,
   getItemById,
   getItemsByCollection,
   getItemsByTypeAndFilter,
@@ -60,7 +59,6 @@ export const deleteItem = middyfy(async (event: APIGatewayProxyEventV2) => {
 })
 
 async function resolveDeleteItem(id: string) {
-  // Soft delete, marks v0 with deleted flag
   return deleteItm(id)
 }
 
@@ -69,20 +67,7 @@ export const upsertItem = middyfy(async (event: APIGatewayProxyEventV2) => {
 })
 
 async function resolveUpsertItem(id: string, body: any) {
-  const metadata = await getItemMetadataById(id)
-  const currentVersion = metadata?.currentVersion ?? 0
-  const newVersion = currentVersion + 1
-  await putItem({
-    id,
-    sort: `v${newVersion}`,
-    ...body,
-  })
-  await putItem({
-    id,
-    sort: 'v0',
-    ...body,
-  })
-  return setItemMetadataById(id, { ...metadata, currentVersion: newVersion })
+  return upsertItm(id, body)
 }
 
 export const upsertBatchItems = middyfy(async (event: APIGatewayProxyEventV2) => {

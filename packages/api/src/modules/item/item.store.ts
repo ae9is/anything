@@ -7,6 +7,7 @@ import {
   batchGet,
   softDeleteItem,
   putItem,
+  deleteItem as deleteItm,
 } from '../../store/store'
 import { Filter } from 'utils'
 import { getCollectionById } from '../collection/collection.store'
@@ -24,11 +25,19 @@ export const getItemsByCollection = async (collectionId: string) => {
 }
 
 export const deleteItem = async (id: string) => {
-  const item = {
-    id: id,
+  // Marks current version with deleted flag, and deletes v0 copy of current
+  const metadata = await getItemMetadataById(id)
+  const currentVersion = metadata?.currentVersion ?? 0
+  const current = {
+    id,
+    sort: `v${currentVersion}`,
+  }
+  const v0 = {
+    id,
     sort: 'v0',
   }
-  return softDeleteItem(item)
+  await softDeleteItem(current)
+  return deleteItm(v0)
 }
 
 export const getItemById = async (id: string) => {
@@ -49,9 +58,9 @@ export const getItemMetadataById = async (id: string) => {
 
 export const setItemMetadataById = async (id: string, metadata: any) => {
   const item = {
+    ...metadata,
     id,
     sort: '@meta',
-    body: metadata,
   }
   return putItem(item)
 }
@@ -64,4 +73,21 @@ export const getItemsByTypeAndFilter = async (
   ascendingSortKey = false
 ) => {
   return queryByTypeAndFilter(type, filter, startKey, gsi1, gsi1Id, limit, ascendingSortKey)
+}
+
+export const upsertItem = async (id: string, body: any) => {
+  const metadata = await getItemMetadataById(id)
+  const currentVersion = metadata?.currentVersion ?? 0
+  const newVersion = currentVersion + 1
+  await putItem({
+    ...body,
+    id,
+    sort: `v${newVersion}`,
+  })
+  await putItem({
+    ...body,
+    id,
+    sort: 'v0',
+  })
+  return setItemMetadataById(id, { ...metadata, currentVersion: newVersion })
 }

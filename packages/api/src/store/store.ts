@@ -210,7 +210,8 @@ const isVersioned = (item: Item) => {
 }
 
 const isValidItem = (item: Item) => {
-  // Note that "Item" here refers to both items and item collections.
+  // Note that "Item" here refers to DynamoDB items, i.e. generic entries in table.
+  // This can be: items, item metadata, collections.
   // Validate each collection has:
   // - id
   // - ctype
@@ -220,11 +221,16 @@ const isValidItem = (item: Item) => {
   // - id
   // - type
   // - sort key of v[0-9]+ (i.e. v0, v1)
+  // Validate item metadata has:
+  // - id
+  // - sort key of @meta
+  // - currentVersion
   try {
     if (
       item?.id &&
       ((item.type && item.sort.match(/v[0-9]+/)) || // item
-        (item.ctype && item.sort === '@meta' && Array.isArray(item.itemIds))) // collection
+        (item.ctype && item.sort === '@meta' && Array.isArray(item.itemIds)) || // collection
+        (item.sort === '@meta' && item?.currentVersion)) // item metadata
     ) {
       logger.debug('Valid item: ', item)
       return true

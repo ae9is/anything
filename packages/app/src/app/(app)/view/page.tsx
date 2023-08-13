@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import { TypeSelect, CollectionSelect } from '../../../components/select'
-import { DataGrid } from '../../../components/grid/DataGrid'
+import { ItemGrid } from '../../../components/grid/ItemGrid'
 import { TypeSearchForm } from '../../../components/forms/TypeSearchForm'
 import { Filter } from 'utils'
 
@@ -70,7 +70,7 @@ export default function Page() {
 
       {type && (
         <div className="mt-16 p-2">
-          <DataGrid
+          <ItemGrid
             type={type}
             collection={collection}
             filter={filter}

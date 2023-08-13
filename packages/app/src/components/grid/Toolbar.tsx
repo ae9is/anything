@@ -1,10 +1,10 @@
-import { Button, Menu, MenuItem } from '@mui/material'
-import {
-  GridRowSelectionModel,
-  GridToolbar,
-  GridToolbarContainer,
-} from '@mui/x-data-grid-premium'
 import { useState } from 'react'
+import { Button, Menu, MenuItem } from '@mui/material'
+import { GridRowSelectionModel, GridToolbar, GridToolbarContainer } from '@mui/x-data-grid-premium'
+import HistoryIcon from '@mui/icons-material/History'
+import AddIcon from '@mui/icons-material/Add'
+import RemoveIcon from '@mui/icons-material/Remove'
+import IsoIcon from '@mui/icons-material/Iso'
 
 export interface ToolbarProps {
   hasCollection: boolean
@@ -44,17 +44,11 @@ export function Toolbar({
   return (
     <GridToolbarContainer>
       <GridToolbar />
-      {/*
-      <GridToolbarColumnsButton />
-      <GridToolbarFilterButton />
-      <GridToolbarDensitySelector />
-      <GridToolbarExport />
-      */}
       <GridToolbarContainer>
         <Button
           size="small"
           disabled={rowSelectionModel?.length !== 1}
-          //startIcon={<Todo />}
+          startIcon={<HistoryIcon />}
           onClick={handleShowVersions}
         >
           Versions
@@ -62,12 +56,12 @@ export function Toolbar({
         <Button
           size="small"
           disabled={!hasCollection || isMutating || rowSelectionModel?.length === 0}
-          //startIcon={<Todo />}
+          startIcon={<IsoIcon />}
           onClick={(event) => {
             setAnchor(event.currentTarget)
           }}
         >
-          +/- Collection
+          Collection
         </Button>
         <Menu
           id="collectionMenu"
@@ -77,8 +71,12 @@ export function Toolbar({
             setAnchor(undefined)
           }}
         >
-          <MenuItem onClick={handleAdd}>+ Add selected</MenuItem>
-          <MenuItem onClick={handleRemove}>- Remove selected</MenuItem>
+          <MenuItem onClick={handleAdd}>
+            <AddIcon /> Add selected
+          </MenuItem>
+          <MenuItem onClick={handleRemove}>
+            <RemoveIcon /> Remove selected
+          </MenuItem>
         </Menu>
       </GridToolbarContainer>
     </GridToolbarContainer>
