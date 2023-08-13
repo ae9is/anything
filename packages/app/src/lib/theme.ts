@@ -58,41 +58,30 @@ export const dataGridThemeFixes = {
   '& .actions': {
     color: 'hsl(var(--p))',
   },
-  '& .MuiDataGrid-row > .MuiDataGrid-cell': {
+  '& .custom-app-theme': {
     color: 'hsl(var(--bc))',
-    backgroundColor: 'unset',
-  },
-  '& .MuiDataGrid-row.MuiDataGrid-row--editable.Mui-selected': {
-    color: 'hsl(var(--pc))',
-    backgroundColor: 'hsl(var(--p) / 0.3)',
-  },
-  '& .MuiDataGrid-row.MuiDataGrid-row--editable.Mui-selected:hover': {
-    backgroundColor: 'hsl(var(--pf) / 0.3)',
-  },
-  '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing': {
-    color: 'hsl(var(--nc))',
-    backgroundColor: 'hsl(var(--n))',
-  },
-  '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing.Mui-selected': {
-    backgroundColor: 'hsl(var(--nf) / 0.8)',
-  },
-  '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing.Mui-selected:hover': {
-    backgroundColor: 'hsl(var(--nf))',
-  },
-  '& .MuiDataGrid-row.MuiDataGrid-row--editable:hover': {
-    color: 'hsl(var(--pc))',
-    backgroundColor: 'hsl(var(--pf) / 0.1)',
-  },
-  '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing input': {
-    color: 'hsl(var(--nc))',
-  },
-  '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing.Mui-selected input': {
-    backgroundColor: 'unset',
-  },
-  '& .MuiDataGrid-row.MuiDataGrid-row--editable.MuiDataGrid-row--editing.Mui-selected > div': {
-    backgroundColor: 'unset',
-  },
-  '& .MuiDataGrid-cell.MuiDataGrid-cell--editing': {
-    backgroundColor: 'unset',
+    backgroundColor: 'hsl(var(--b1))',
+    '&:hover': {
+      color: 'hsl(var(--pc))',
+      backgroundColor: 'hsl(var(--pf) / 0.1)',
+    },
+    '&.Mui-selected': {
+      color: 'hsl(var(--pc))',
+      backgroundColor: 'hsl(var(--p) / 0.3)',
+      '&:hover': {
+        backgroundColor: 'hsl(var(--pf) / 0.3)',
+      },
+    },
+    '&.MuiDataGrid-row--editing .MuiDataGrid-cell': {
+      color: 'hsl(var(--nc))',
+      backgroundColor: 'hsl(var(--n))',
+      '& .MuiDataGrid-editInputCell': {
+        color: 'unset',
+      },
+      //'&:hover': {},
+      //'&.Mui-selected': {
+      //  '&:hover': {},
+      //},
+    },
   },
 }

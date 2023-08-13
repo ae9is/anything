@@ -255,6 +255,7 @@ export function ItemGrid({
         {!error && !isLoading && (
           <Box sx={dataGridThemeFixes}>
             <DataGridPremium
+              getRowClassName={(params) => 'custom-app-theme'}
               style={{
                 color: 'hsl(var(--bc))',
               }}
