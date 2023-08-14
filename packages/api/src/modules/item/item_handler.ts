@@ -20,11 +20,14 @@ async function resolveItemById(id: string) {
 }
 
 export const itemVersionsById = middyfy(async (event: APIGatewayProxyEventV2) => {
-  return getById(event, resolveItemVersionsById)
+  return getByIdAndQuery(event, resolveItemVersionsById)
 })
 
-async function resolveItemVersionsById(id: string) {
-  return queryItemVersions(id)
+async function resolveItemVersionsById(id: string, query: any) {
+  const startKey = query?.startKey
+  const limit = query?.limit
+  const asc = query?.asc
+  return queryItemVersions(id, startKey, limit, asc)
 }
 
 export const itemsByCollection = middyfy(async (event: APIGatewayProxyEventV2) => {
