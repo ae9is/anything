@@ -292,22 +292,6 @@ export const softDeleteItem = async (key: ItemKey) => {
   return true
 }
 
-export const queryItem = async (key: ItemKey) => {
-  const cmd = new QueryCommand({
-    TableName: table,
-    ExpressionAttributeValues: {
-      ':id': key.id,
-      ':sort': key?.sort,
-    },
-    KeyConditionExpression: key?.sort ? 'id = :id and sort = :sort' : 'id = :id', // TODO extend sorting ops
-    // FilterExpression: '',
-  })
-  const resp = await ddbDocClient.send(cmd)
-  const items = resp?.Items
-  const lastKey = encodeKey(resp?.LastEvaluatedKey)
-  return { items: items, lastKey: lastKey }
-}
-
 export const queryByTypeAndFilter = async (
   type: any,
   filter?: Filter,
