@@ -27,11 +27,11 @@ export function LoadingSelect({
   onCreateOption,
 }: LoadingSelectProps) {
   const { data, error, isLoading } = useQuery(query, queryOptions)
-  let fallback: string | undefined = '...'
+  let fallback: React.ReactNode
   if (error) {
-    fallback = 'Error fetching!'
+    fallback = <p className="error">Error fetching options</p>
   } else if (isLoading) {
-    fallback = 'Loading'
+    fallback = <p className="info">Loading options...</p>
   } else {
     fallback = undefined
   }
@@ -51,7 +51,7 @@ export function LoadingSelect({
 
   return (
     <div className="w-full">
-      {fallback && <p>{fallback}</p>}
+      {fallback && fallback}
       {!fallback && (
         <ArraySelect
           value={value}
