@@ -20,7 +20,7 @@ export type HttpMethod =
 
 //import { QueryParameterBag } from '@aws-sdk/types'
 export type QueryParameterBag = {
-  [x: string]: string | string[] | null | undefined
+  [x: string]: string | string[] | number | boolean | null | undefined
 }
 
 export interface RequestProps {

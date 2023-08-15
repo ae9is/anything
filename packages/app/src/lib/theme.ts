@@ -56,10 +56,20 @@ export const muiTheme = createTheme({
 // ref: https://mui.com/x/react-data-grid/style/
 // Unfortunately need to set custom styling for data grid even with MUI theme specified.
 export const dataGridThemeFixes = {
+  color: 'hsl(var(--bc))',
   '& .actions': {
     color: 'hsl(var(--p))',
   },
-  '& .custom-app-theme': {
+  '& .MuiDataGrid-footerContainer > .MuiTablePagination-root': {
+    color: 'unset',
+  },
+  '& .MuiButtonBase-root.Mui-disabled': {
+    color: 'hsl(var(--bc) / 0.3)',
+  },
+  '& .MuiTablePagination-selectIcon': {
+    color: 'unset',
+  },
+  '& .custom-row-theme': {
     color: 'hsl(var(--bc))',
     backgroundColor: 'hsl(var(--b1))',
     '&:hover': {

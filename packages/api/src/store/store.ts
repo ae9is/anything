@@ -16,7 +16,7 @@ import {
   waitUntilTableNotExists,
 } from '@aws-sdk/client-dynamodb'
 import logger from 'logger'
-import { Filter, notEmpty } from 'utils'
+import { Filter, decodeBase64ToJson, encodeJsonToBase64, notEmpty } from 'utils'
 import { ddbClient, ddbDocClient, schema, table, testDataFilePath, typesTable } from '../services/dynamodb'
 
 export interface ItemKey {
@@ -292,32 +292,16 @@ export const softDeleteItem = async (key: ItemKey) => {
   return true
 }
 
-export const queryItem = async (key: ItemKey) => {
-  const cmd = new QueryCommand({
-    TableName: table,
-    ExpressionAttributeValues: {
-      ':id': key.id,
-      ':sort': key?.sort,
-    },
-    KeyConditionExpression: key?.sort ? 'id = :id and sort = :sort' : 'id = :id', // TODO extend sorting ops
-    // FilterExpression: '',
-  })
-  const resp = await ddbDocClient.send(cmd)
-  const items = resp?.Items
-  const lastKey = resp?.LastEvaluatedKey
-  return { items: items, lastKey: lastKey }
-}
-
-// TODO could decrypt startKey and encrypt lastKey
 export const queryByTypeAndFilter = async (
   type: any,
   filter?: Filter,
-  startKey?: any,
+  startKey?: string,
   index?: string,
   indexPartitionKey = 'type',
   limit?: number,
   ascendingSortKey?: boolean
 ) => {
+  const decodedStartKey = decodeKey(startKey)
   const sortKeyExpression = filter?.sortKeyExpression ? ' and ' + filter?.sortKeyExpression : ''
   const keyConditionExpression = '#type = :type' + sortKeyExpression
   logger.debug('keyConditionExpression: ', keyConditionExpression)
@@ -342,14 +326,26 @@ export const queryByTypeAndFilter = async (
       ...typeValue,
     },
     FilterExpression: filter?.filterExpression,
-    ExclusiveStartKey: startKey,
+    ExclusiveStartKey: decodedStartKey,
     Limit: limit,
     ScanIndexForward: ascendingSortKey,
   })
   const resp = await ddbDocClient.send(cmd)
   const items = resp?.Items
-  const lastKey = resp?.LastEvaluatedKey
+  const lastKey = encodeKey(resp?.LastEvaluatedKey)
   return { items: items, lastKey: lastKey }
+}
+
+const decodeKey = (key?: string) => {
+  if (key) {
+    return decodeBase64ToJson(key)
+  }
+}
+
+const encodeKey = (key?: Record<string, any>) => {
+  if (key) {
+    return encodeJsonToBase64(key)
+  }
 }
 
 // Write item type to unique types table
@@ -383,10 +379,11 @@ const putTypes = async (types: string[], batchSize = 35) => {
 
 export const queryItemVersions = async (
   id: string,
-  startKey?: any,
+  startKey?: string,
   limit?: number,
   ascendingSortKey?: boolean
 ) => {
+  const decodedStartKey = decodeKey(startKey)
   const cmd = new QueryCommand({
     TableName: table,
     ExpressionAttributeNames: {
@@ -398,12 +395,12 @@ export const queryItemVersions = async (
       ':sort': 'v',
     },
     KeyConditionExpression: '#id = :id and begins_with(#sort, :sort)',
-    ExclusiveStartKey: startKey,
+    ExclusiveStartKey: decodedStartKey,
     Limit: limit,
     ScanIndexForward: ascendingSortKey,
   })
   const resp = await ddbDocClient.send(cmd)
   const items = resp?.Items
-  const lastKey = resp?.LastEvaluatedKey
+  const lastKey = encodeKey(resp?.LastEvaluatedKey)
   return { items: items, lastKey: lastKey }
 }
