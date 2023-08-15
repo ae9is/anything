@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { GridColDef } from '@mui/x-data-grid-premium'
 import { notEmpty } from 'utils'
 
-export function useColumns(rows: any[], defaultEditable = true) {
+export function useColumns(rows: any[], defaultEditable = false) {
   const cols: GridColDef[] = useMemo(() => {
     const fixedHeaders = [
       {
