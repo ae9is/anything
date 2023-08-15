@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   DataGridPremium,
   GridActionsCellItem,
   GridColDef,
+  GridPaginationModel,
   GridRowEditStopParams,
   GridRowEditStopReasons,
   GridRowId,
@@ -35,20 +36,54 @@ export interface ItemGridProps {
   filter?: Filter
 }
 
+// Pagination
+// ref: https://mui.com/x/react-data-grid/pagination/#cursor-implementation
+
+// Editing
+// ref: https://mui.com/x/react-data-grid/editing/#full-featured-crud
+
 export function ItemGrid({
   loadCollection,
   collection,
   type,
   filter = defaultFilter,
 }: ItemGridProps) {
+  const ascendingSortKey = true
+  const defaultPageSize = 3 //10
+  const mapPageToNextCursor = useRef<{ [page: number]: any }>({})
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: defaultPageSize,
+  })
+  const paginationQueryParams = useMemo(
+    () => ({
+      startKey: mapPageToNextCursor.current[paginationModel.page - 1],
+      limit: paginationModel.pageSize,
+      asc: ascendingSortKey,
+    }),
+    [mapPageToNextCursor, paginationModel, ascendingSortKey]
+  )
+  logger.debug('Pagination params: ', paginationQueryParams)
+  const [rowCount, setRowCount] = useState(Number.MAX_VALUE)
+
+  function onPaginationModelChange(newPaginationModel: GridPaginationModel) {
+    // Only change page if we have a cursor for the page, or it's to the first page
+    logger.debug('newPaginationModel: ', newPaginationModel)
+    if (newPaginationModel.page === 0 || mapPageToNextCursor.current[newPaginationModel.page - 1]) {
+      setPaginationModel(newPaginationModel)
+    }
+  }
+
   const query = queries.listItemsByCollection
   const queryOpts = {
     id: loadCollection ? collection : undefined,
+    queryParams: paginationQueryParams,
   }
   const fallback = queries.listItemsByTypeAndFilter
   const fallbackOpts = {
     id: type,
     queryParams: {
+      ...paginationQueryParams,
       sortKeyExpression: filter?.sortKeyExpression,
       filterExpression: filter?.filterExpression,
       attributeNames: stringify(filter?.attributeNames),
@@ -56,11 +91,13 @@ export function ItemGrid({
     },
   }
   const { data, error, isLoading } = useConditionalQuery(query, queryOpts, fallback, fallbackOpts)
+  const lastKey = data?.lastKey
+  logger.debug('lastKey: ', lastKey)
   const erroredItemCount = useMemo(() => data?.errorCount ?? 0, [data])
   const rows: any[] = useRowsFromData(data)
   const rowCols: GridColDef[] = useColumns(rows)
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({})
-  // ref: https://mui.com/x/react-data-grid/editing/#full-featured-crud
+
   const actionColumn: GridColDef = {
     field: 'actions',
     type: 'actions',
@@ -249,26 +286,68 @@ export function ItemGrid({
     setIsEditing(false)
   }
 
+  useEffect(() => {
+    if (!isLoading) {
+      if (lastKey) {
+        // We have another cursor, add it to our map of page to cursor
+        mapPageToNextCursor.current[paginationModel.page] = lastKey
+        logger.debug('Set next cursor: ', lastKey)
+        logger.debug('Page: ', paginationModel.page)
+        logger.debug(mapPageToNextCursor.current)
+      } else {
+        // No more cursors, calculate and set total row count
+        logger.debug('Reached last page')
+        const totalNumRows = paginationModel.page * paginationModel.pageSize + rows?.length || 0
+        setRowCount(totalNumRows)
+      }
+    }
+  }, [paginationModel, isLoading, lastKey, rows?.length])
+
+  function getPaginationRowLabels({ from, to, count, }: { from: number, to: number, count: number }) {
+    if (count === Number.MAX_VALUE) {
+      return `Rows ${from} - ${to}`
+    }
+    return `${from} - ${to} of ${count}`
+  }
+
   return (
     <ThemeProvider theme={muiTheme}>
       <div className="container h-96 max-h-fit">
-        {error && <div className="text-error">Error</div>}
+        {error && <div className="text-error">Error loading data</div>}
         {isLoading && <div className="text">Loading...</div>}
         {!error && !isLoading && (
-          <Box sx={dataGridThemeFixes}>
+          <Box>
             <DataGridPremium
-              getRowClassName={(params) => 'custom-app-theme'}
-              style={{
-                color: 'hsl(var(--bc))',
-              }}
+              sx={dataGridThemeFixes}
+              getRowClassName={(params) => 'custom-row-theme'}
               columns={cols}
               rows={rows}
+              loading={isLoading}
+              // Need to defined custom row id because by default data grid will
+              //  use and expect any id column to be unique across rows.
+              // Here, items should be unique across id and sort key (version).
+              // ref: https://mui.com/x/react-data-grid/row-definition/
+              getRowId={(row) => row?.id + '@' + row?.sort}
+              // The row selection model is just an array of selected row ids,
+              //  where row id (from above) is like: item@v0
+              rowSelectionModel={rowSelectionModel}
+              onRowSelectionModelChange={onRowSelectionModelChange}
+              pagination
+              paginationMode="server"
+              rowCount={rowCount}
+              pageSizeOptions={[5, defaultPageSize, 25, 50, 100]}
+              onPaginationModelChange={onPaginationModelChange}
+              paginationModel={paginationModel}
+              localeText={{
+                MuiTablePagination: {
+                  labelDisplayedRows: getPaginationRowLabels,
+                },
+              }}
               editMode="row"
               rowModesModel={rowModesModel}
               onRowModesModelChange={onRowModesModelChange}
               onRowEditStop={onRowEditStop}
               processRowUpdate={processRowUpdate}
-              loading={isLoading}
               slots={{
                 toolbar: Toolbar,
               }}
@@ -282,15 +361,6 @@ export function ItemGrid({
                   onShowItemVersions,
                 },
               }}
-              // Need to defined custom row id because by default data grid will
-              //  use and expect any id column to be unique across rows.
-              // Here, items should be unique across id and sort key (version).
-              // ref: https://mui.com/x/react-data-grid/row-definition/
-              getRowId={(row) => row?.id + '@' + row?.sort}
-              // The row selection model is just an array of selected row ids,
-              //  where row id (from above) is like: item@v0
-              rowSelectionModel={rowSelectionModel}
-              onRowSelectionModelChange={onRowSelectionModelChange}
             />
             {erroredItemCount > 0 && (
               <div className="float-right mt-4 text-error">
