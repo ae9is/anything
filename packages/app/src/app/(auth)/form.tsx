@@ -3,7 +3,7 @@
 
 import { useContext } from 'react'
 
-import { App } from '../(app)/app'
+import App from '../(app)/page'
 import { signIn } from '../../lib/auth'
 import { Footer } from '../../components'
 import { UserContext } from './provider'

@@ -1,10 +1,11 @@
-import { Link, Navbar } from '../../components'
+// prettier-ignore
+'use client'
+
+import { Link } from '../../components'
 import { useContext } from 'react'
 import { UserAttrContext } from '../(auth)/provider'
 
-export interface AppProps {}
-
-export function App(props: AppProps) {
+export default function Page() {
   const userAttr = useContext<any>(UserAttrContext)
 
   const welcome = (
@@ -19,7 +20,6 @@ export function App(props: AppProps) {
 
   return (
     <>
-      <Navbar />
       {welcome}
     </>
   )
