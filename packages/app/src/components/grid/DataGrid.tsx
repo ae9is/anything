@@ -310,66 +310,64 @@ export function DataGrid({
 
   return (
     <ThemeProvider theme={muiTheme}>
-      <div className="container h-96 max-h-fit">
-        {error && <div className="text-error">Error loading data</div>}
-        {isLoading && <div className="text">Loading...</div>}
-        {!error && !isLoading && (
-          <Box>
-            <DataGridPremium
-              sx={dataGridThemeFixes}
-              getRowClassName={(params) => 'custom-row-theme'}
-              columns={cols}
-              rows={rows}
-              loading={isLoading}
-              // Need to defined custom row id because by default data grid will
-              //  use and expect any id column to be unique across rows.
-              // Here, items should be unique across id and sort key (version).
-              // ref: https://mui.com/x/react-data-grid/row-definition/
-              getRowId={(row) => row?.id + '@' + row?.sort}
-              // The row selection model is just an array of selected row ids,
-              //  where row id (from above) is like: item@v0
-              rowSelectionModel={rowSelectionModel}
-              onRowSelectionModelChange={onRowSelectionModelChange}
-              pagination
-              paginationMode="server"
-              rowCount={rowCount}
-              pageSizeOptions={[5, defaultPageSize, 25, 50, 100]}
-              onPaginationModelChange={onPaginationModelChange}
-              paginationModel={paginationModel}
-              localeText={{
-                MuiTablePagination: {
-                  labelDisplayedRows: getPaginationRowLabels,
-                },
-              }}
-              editMode="row"
-              rowModesModel={rowModesModel}
-              onRowModesModelChange={onRowModesModelChange}
-              onRowEditStop={onRowEditStop}
-              processRowUpdate={processRowUpdate}
-              slots={{
-                toolbar: Toolbar,
-              }}
-              slotProps={{
-                toolbar: {
-                  hasCollection: !!collection,
-                  isMutating: addIsMutating || remIsMutating || delIsMutating,
-                  rowSelectionModel: rowSelectionModel,
-                  onAddSelectedToCollection,
-                  onRemoveSelectedFromCollection,
-                  onShowItemVersions,
-                },
-              }}
-              {...rest}
-            />
-            {erroredItemCount > 0 && (
-              <div className="float-right mt-4 text-error">
-                ({erroredItemCount} item{erroredItemCount > 1 ? 's' : ''} couldn&apos;t be retrieved
-                and aren&apos;t displayed here)
-              </div>
-            )}
-          </Box>
-        )}
-      </div>
+      {error && <div className="text-error">Error loading data</div>}
+      {isLoading && <div className="text">Loading...</div>}
+      {!error && !isLoading && (
+        <Box>
+          <DataGridPremium
+            sx={dataGridThemeFixes}
+            getRowClassName={(params) => 'custom-row-theme'}
+            columns={cols}
+            rows={rows}
+            loading={isLoading}
+            // Need to defined custom row id because by default data grid will
+            //  use and expect any id column to be unique across rows.
+            // Here, items should be unique across id and sort key (version).
+            // ref: https://mui.com/x/react-data-grid/row-definition/
+            getRowId={(row) => row?.id + '@' + row?.sort}
+            // The row selection model is just an array of selected row ids,
+            //  where row id (from above) is like: item@v0
+            rowSelectionModel={rowSelectionModel}
+            onRowSelectionModelChange={onRowSelectionModelChange}
+            pagination
+            paginationMode="server"
+            rowCount={rowCount}
+            pageSizeOptions={[5, defaultPageSize, 25, 50, 100]}
+            onPaginationModelChange={onPaginationModelChange}
+            paginationModel={paginationModel}
+            localeText={{
+              MuiTablePagination: {
+                labelDisplayedRows: getPaginationRowLabels,
+              },
+            }}
+            editMode="row"
+            rowModesModel={rowModesModel}
+            onRowModesModelChange={onRowModesModelChange}
+            onRowEditStop={onRowEditStop}
+            processRowUpdate={processRowUpdate}
+            slots={{
+              toolbar: Toolbar,
+            }}
+            slotProps={{
+              toolbar: {
+                hasCollection: !!collection,
+                isMutating: addIsMutating || remIsMutating || delIsMutating,
+                rowSelectionModel: rowSelectionModel,
+                onAddSelectedToCollection,
+                onRemoveSelectedFromCollection,
+                onShowItemVersions,
+              },
+            }}
+            {...rest}
+          />
+          {erroredItemCount > 0 && (
+            <div className="float-right mt-4 text-error">
+              ({erroredItemCount} item{erroredItemCount > 1 ? 's' : ''} couldn&apos;t be retrieved
+              and aren&apos;t displayed here)
+            </div>
+          )}
+        </Box>
+      )}
     </ThemeProvider>
   )
 }
