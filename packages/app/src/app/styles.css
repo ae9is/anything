@@ -43,14 +43,14 @@ body {
 }
 
 #menu- .MuiPaper-root .MuiMenuItem-root:hover {
-  background-color: hsl(var(--pf) / 0.1);
+  background-color: hsl(var(--pf) / 0.5);
 }
 
 #menu- .MuiPaper-root .MuiMenuItem-root.Mui-selected {
   color: hsl(var(--pc));
-  background-color: hsl(var(--p) / 0.3);
+  background-color: hsl(var(--p) / 0.8);
 }
 
 #menu- .MuiPaper-root .MuiMenuItem-root.Mui-selected:hover {
-  background-color: hsl(var(--pf) / 0.3);
+  background-color: hsl(var(--pf) / 0.8);
 }

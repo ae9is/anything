@@ -64,7 +64,7 @@ export const dataGridThemeFixes = {
     color: 'unset',
   },
   '& .MuiButtonBase-root.Mui-disabled': {
-    color: 'hsl(var(--bc) / 0.3)',
+    color: 'hsl(var(--bc) / 0.5)',
   },
   '& .MuiTablePagination-selectIcon': {
     color: 'unset',
@@ -74,13 +74,13 @@ export const dataGridThemeFixes = {
     backgroundColor: 'hsl(var(--b1))',
     '&:hover': {
       color: 'hsl(var(--pc))',
-      backgroundColor: 'hsl(var(--pf) / 0.1)',
+      backgroundColor: 'hsl(var(--pf) / 0.5)',
     },
     '&.Mui-selected': {
       color: 'hsl(var(--pc))',
-      backgroundColor: 'hsl(var(--p) / 0.3)',
+      backgroundColor: 'hsl(var(--p) / 0.8)',
       '&:hover': {
-        backgroundColor: 'hsl(var(--pf) / 0.3)',
+        backgroundColor: 'hsl(var(--pf) / 0.8)',
       },
     },
     '&.MuiDataGrid-row--editing .MuiDataGrid-cell': {

@@ -102,12 +102,13 @@ export function ArraySelect({
     return {
       ...theme,
       borderRadius: 8,
+      // Match colours in: src/app/styles.css, src/lib/theme.ts
       colors: {
         ...theme.colors,
-        primary: 'hsl(var(--p))', // Option focus background colour, input focus border colour
+        primary: 'hsl(var(--p) / 0.8)', // Option focus background colour, input focus border colour; 0.8 to match data grid
         primary75: 'hsl(var(--p) / 0.75)',
         primary50: 'hsl(var(--p) / 0.50)',
-        primary25: 'hsl(var(--p) / 0.25)', // Option hover background colour
+        primary25: 'hsl(var(--p) / 0.50)', // Option hover background colour; 0.5 to match data grid (0.25 doesn't work for light mode)
         neutral0: 'hsl(var(--b1))', // Background colour
         neutral20: 'hsl(var--b1) / 0.2', // Dropdown and loading indicator font colour
         neutral80: 'hsl(var(--bc))', // Placeholder (label) font colour
