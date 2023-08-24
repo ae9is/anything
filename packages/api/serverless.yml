@@ -72,5 +72,12 @@ functions:
   - ${file(./src/modules/collection/collection.functions.yml)}
   - ${file(./src/modules/type/type.functions.yml)}
   - ${file(./src/modules/health/health.functions.yml)}
-resources: ${file(./_resources.yml)}
 provider: ${file(./_provider.yml)}  # OK
+resources:
+  # Array of files each with Resources object
+  # ref: https://www.serverless.com/framework/docs/providers/aws/guide/variables#multiple-configuration-files
+  - ${file(./src/resources/database.yml)}
+  - Outputs:
+      # Pass HTTP API endpoint to the auth resources so they know what to auth
+      httpApiRootArn:
+        Value: !Sub 'arn:aws:execute-api:${env:AWS_REGION}:${AWS::AccountId}:${HttpApi}'
