@@ -1,18 +1,24 @@
 # ref: https://www.serverless.com/framework/docs/guides/compose
 services:
+  anything-auth:
+    path: packages/infra/auth
+    params:
+      distributionDomainName: ${anything-web.distributionDomainName}
+      httpApiRootArn: ${anything.httpApiRootArn}
+    dependsOn:
+      - anything-web
+      - anything
   anything:
     path: packages/api
     params:
       streamArn: ${anything-data.streamArn}
     dependsOn:
       - anything-data
-  anything-auth:
-    path: packages/infra/auth
-    params:
-      distributionDomainName: ${anything-data.distributionDomainName}
-      httpApiRootArn: ${anything.httpApiRootArn}
-    dependsOn:
-      - anything-data
-      - anything
   anything-data:
     path: packages/infra/data
+    params:
+      loggingBucket: ${anything-web.loggingBucket}
+    dependsOn:
+      - anything-web
+  anything-web:
+    path: packages/infra/web

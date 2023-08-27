@@ -1,123 +1,4 @@
 Resources:
-  WebBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      # Needs to be unique in region
-      # BucketName: ${self:provider.environment.NAMESPACE}-web-abcde12345
-      BucketName: ${self:provider.environment.NAMESPACE}-web
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: True
-        BlockPublicPolicy: True
-        IgnorePublicAcls: True
-        RestrictPublicBuckets: True
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-        - ServerSideEncryptionByDefault:
-            SSEAlgorithm: 'AES256'
-      LoggingConfiguration:
-        DestinationBucketName: !Ref LoggingBucket
-        LogFilePrefix: s3-web-access-logs
-  #      VersioningConfiguration:
-  #        Status: Enabled
-
-  WebBucketPolicy:
-    Type: 'AWS::S3::BucketPolicy'
-    Properties:
-      Bucket: !Ref WebBucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Action: 's3:GetObject*'
-            Effect: Allow
-            Resource: !Sub ${WebBucket.Arn}/*
-            Principal:
-              Service: cloudfront.amazonaws.com
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}
-
-  LoggingBucket:
-    Type: 'AWS::S3::Bucket'
-    Properties:
-      BucketName: ${self:provider.environment.NAMESPACE}-logs
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls : True
-        BlockPublicPolicy : True
-        IgnorePublicAcls : True
-        RestrictPublicBuckets : True
-      VersioningConfiguration:
-        Status: Enabled
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-        - ServerSideEncryptionByDefault:
-            SSEAlgorithm: 'AES256'
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: BucketOwnerPreferred
-    DeletionPolicy: Delete
-
-  Distribution:
-    # Note: no AWS WAF (web app firewall) configured
-    Type: 'AWS::CloudFront::Distribution'
-    Properties:
-      DistributionConfig:
-        Origins:
-        - DomainName: !GetAtt WebBucket.RegionalDomainName
-          Id: S3Origin
-          S3OriginConfig:
-            # Empty string allows both cloudfront and s3 url access to resource
-            # ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudfront-distribution-s3originconfig.html#cfn-cloudfront-distribution-s3originconfig-originaccessidentity
-            OriginAccessIdentity: ""
-          OriginAccessControlId: !GetAtt CloudFrontOriginAccessControl.Id
-  #        - DomainName: !Sub "${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
-  #          Id: ApiOrigin
-  #          CustomOriginConfig:
-  #            OriginProtocolPolicy: https-only
-        Enabled: True
-        DefaultRootObject: index.html
-        DefaultCacheBehavior:
-          AllowedMethods:
-          - GET
-          - HEAD
-          - OPTIONS
-          TargetOriginId: S3Origin
-          # ref: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html#managed-cache-caching-optimized
-          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # CachingOptimized
-          # ref: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html#managed-origin-request-policy-cors-s3
-          OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf # CORS-S3Origin
-          # ref: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html#managed-response-headers-policies-security
-          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
-          ViewerProtocolPolicy: redirect-to-https
-  #        CacheBehaviors:
-  #          - PathPattern: "v1/hello"
-  #            AllowedMethods:
-  #            - GET
-  #            - HEAD
-  #            - OPTIONS
-  #            TargetOriginId: ApiOrigin
-  #            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # CachingDisabled
-  #            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # AllViewerExceptHostHeader
-  #            ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
-  #            ViewerProtocolPolicy: redirect-to-https
-        PriceClass: PriceClass_All
-        Logging:
-          Bucket: !GetAtt LoggingBucket.RegionalDomainName
-          Prefix: cloudfront-access-logs
-        ViewerCertificate:
-          CloudFrontDefaultCertificate: True
-
-  CloudFrontOriginAccessControl:
-    Type: AWS::CloudFront::OriginAccessControl
-    DependsOn:
-      - WebBucket
-    Properties: 
-      OriginAccessControlConfig:
-        Description: Default Origin Access Control
-        Name: ${self:provider.environment.NAMESPACE}-oac
-        OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
-
   DataBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -132,7 +13,7 @@ Resources:
         - ServerSideEncryptionByDefault:
             SSEAlgorithm: 'AES256'
       LoggingConfiguration:
-        DestinationBucketName: !Ref LoggingBucket
+        DestinationBucketName: ${param:loggingBucket}
         LogFilePrefix: s3-data-logs
 #        VersioningConfiguration:
 #          Status: Enabled
@@ -220,5 +101,3 @@ Outputs:
     Value: !Ref Stream
   streamArn:
     Value: !GetAtt Stream.Arn
-  distributionDomainName:
-    Value: !GetAtt Distribution.DomainName
