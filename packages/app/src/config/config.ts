@@ -1,3 +1,4 @@
+import logger from 'logger'
 import { isLocalhost } from '../lib/localhost'
 
 const useLocalApi = isLocalhost
@@ -17,3 +18,6 @@ export const OAUTH_DOMAIN = 'abcd1234.auth.us-east-1.amazoncognito.com'
 export const LOCAL_APP_URL = 'http://localhost:3000'
 export const PRODUCTION_APP_URL = 'https://abcd1234abcd12.cloudfront.net'
 export const APP_URL = isLocalhost !== undefined && isLocalhost === false ? PRODUCTION_APP_URL : LOCAL_APP_URL
+logger.debug('App url: ' + APP_URL)
+
+export const DASHBOARD_URL = 'https://quicksightdomain/sn/embed/share/accounts/accountid/dashboards/dashboardid?directory_alias=account_directory_alias'
