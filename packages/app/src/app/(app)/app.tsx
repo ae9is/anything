@@ -4,8 +4,9 @@
 import { Link } from '../../components'
 import { useContext } from 'react'
 import { UserAttrContext } from '../(auth)/provider'
+import AppLayout from './layout'
 
-export default function Page() {
+export default function App() {
   const userAttr = useContext<any>(UserAttrContext)
 
   const welcome = (
@@ -19,8 +20,8 @@ export default function Page() {
   // TODO dashboard (summary stats & graphics on items, collections, types in database)
 
   return (
-    <>
+    <AppLayout>
       {welcome}
-    </>
+    </AppLayout>
   )
 }
