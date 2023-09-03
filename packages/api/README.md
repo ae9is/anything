@@ -86,9 +86,22 @@ Some things, like authorisation, aren't supported by Serverless offline's local 
 
 For example (using linux and IAM identity center as the user directory):
 
-1. Setup IAM identity center: https://aws.amazon.com/iam/identity-center/
+1.  IAM Identity Center (SSO) setup:
+    1. First enable IAM Identity Center following: https://aws.amazon.com/iam/identity-center/
+    1. Add two users, `dev` and `admin`: `admin` for serverless deployments; `dev` for app testing
+    1. Add two groups, `Anything` and `Admins` to Groups
+    1. Add `dev` to `Anything` and `admin` to `Admins`
+    1. Add a permission set `AdministratorAccess` based on the `AdministratorAccess` AWS managed policy
+    1. Assign the permission set to the `Admins` group under `AWS accounts → Assign users or groups`
+    1. Add a custom SAML 2.0 application with the following configuration:
+        - Display name: Anything
+    1. Edit the custom application's attribute mappings:
+        - Map `Subject` to `${user:subject}`, Format: persistent
+    1. Later on (see step 9) you will need to edit the following application configuration:
+        - Application ACS URL: `https://<COGNITO_USER_POOL_DOMAIN>/saml2/idpresponse`
+        - Application SAML audience: `urn:amazon:cognito:sp:<COGNITO_USER_POOL_ID>`
 
-2. Make sure the development user you create has enough permissions to deploy. AWS' PowerUserAccess role will not suffice. It does not have permissions to manage IAM.
+2. Make sure the Serverless user (for ex. `admin` above) you create has enough permissions to deploy. AWS' PowerUserAccess role will not suffice. It does not have permissions to manage IAM.
 
     Then, see the Serverless guide to setting up AWS credentials: https://www.serverless.com/framework/docs/providers/aws/guide/credentials
 
@@ -134,7 +147,7 @@ For example (using linux and IAM identity center as the user directory):
 
     (ref: https://docs.aws.amazon.com/cli/latest/userguide/sso-configure-profile-token.html)
 
-6. Note that dummy AWS credentials don't currently work with the serverless better credentials plugin, which is used to be able to integrate Serverless Framework and AWS SSO.
+6. Note that dummy AWS credentials don't currently work with the serverless better credentials plugin, which is used to be able to integrate Serverless Framework and AWS SSO (IAM Identity Center).
  
     You can test out using a dummy profile yourself:
 
