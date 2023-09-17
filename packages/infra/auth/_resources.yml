@@ -101,7 +101,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName: ${self:provider.environment.NAMESPACE}-read-role
-      Path: '/anything/roles/' # becomes for ex: anything/roles/anything-api-development-read-role
+      Path: '/anything/roles/' # becomes for ex: anything/roles/anything-api-dev-read-role
       Description: 'Read user role'
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -111,6 +111,7 @@ Resources:
               Federated: "cognito-identity.amazonaws.com"
             Action:
               - "sts:AssumeRoleWithWebIdentity"
+              - "sts:TagSession"
             Condition:
               StringEquals:
                 "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
@@ -128,14 +129,16 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
-                  - "cognito-identity:*"
+                  - "cognito-identity:Get*"
+                  - "cognito-identity:List*"
                 Resource:
                 - !Sub "arn:aws:cognito-identity:${env:AWS_REGION}:${AWS::AccountId}:identitypool/${IdentityPool}"
               - Effect: "Allow"
                 Action:
                   - "execute-api:Invoke"
                 Resource:
-                - '${param:httpApiRootArn}/*/GET/types'
+                - '${param:httpApiRootArn}/*/GET/healthz'
+                - '${param:httpApiRootArn}/*/GET/types/*'
                 - '${param:httpApiRootArn}/*/GET/items/*'
                 - '${param:httpApiRootArn}/*/GET/collections/*'
 
@@ -143,7 +146,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName: ${self:provider.environment.NAMESPACE}-write-role
-      Path: '/anything/roles/write/' # becomes for ex: anything/roles/anything-api-development-write-role
+      Path: '/anything/roles/' # becomes for ex: anything/roles/anything-api-dev-write-role
       Description: 'Write user role'
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -153,6 +156,7 @@ Resources:
               Federated: "cognito-identity.amazonaws.com"
             Action:
               - "sts:AssumeRoleWithWebIdentity"
+              - "sts:TagSession"
             Condition:
               StringEquals:
                 "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
@@ -170,20 +174,22 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
-                  - "cognito-identity:*"
+                  - "cognito-identity:Get*"
+                  - "cognito-identity:List*"
                 Resource:
                 - !Sub "arn:aws:cognito-identity:${env:AWS_REGION}:${AWS::AccountId}:identitypool/${IdentityPool}"
               - Effect: "Allow"
                 Action:
                   - "execute-api:Invoke"
                 Resource:
-                - '${param:httpApiRootArn}/*/GET/types'
+                - '${param:httpApiRootArn}/*/GET/healthz'
+                - '${param:httpApiRootArn}/*/GET/types/*'
                 - '${param:httpApiRootArn}/*/GET/items/*'
                 - '${param:httpApiRootArn}/*/GET/collections/*'
                 - '${param:httpApiRootArn}/*/POST/items/*'
                 - '${param:httpApiRootArn}/*/PUT/collections/*'
-                - '${param:httpApiRootArn}/*/DELETE/items'
-                - '${param:httpApiRootArn}/*/DELETE/collections'
+                - '${param:httpApiRootArn}/*/DELETE/items/*'
+                - '${param:httpApiRootArn}/*/DELETE/collections/*'
 
   UnauthRole:
     Type: AWS::IAM::Role
@@ -199,6 +205,7 @@ Resources:
               Federated: "cognito-identity.amazonaws.com"
             Action:
               - "sts:AssumeRoleWithWebIdentity"
+              - "sts:TagSession"
             Condition:
               StringEquals:
                 "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
@@ -211,6 +218,7 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
-                  - "cognito-identity:*"
+                  - "cognito-identity:Get*"
+                  - "cognito-identity:List*"
                 Resource:
                 - !Sub "arn:aws:cognito-identity:${env:AWS_REGION}:${AWS::AccountId}:identitypool/${IdentityPool}"
