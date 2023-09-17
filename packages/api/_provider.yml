@@ -10,6 +10,35 @@ environment:
   AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
 httpApi:
   cors: true
+  # ref: https://www.serverless.com/framework/docs/providers/aws/events/http-api#cors-setup
+#  cors:
+#    allowedOrigins:
+#      - http://localhost:3000
+#      - https://${param:distributionDomainName}
+#    allowedHeaders:
+#    # ref: https://stackoverflow.com/a/60849907
+#      - Content-Type
+#      - X-Amz-Date
+#      - Authorization
+#      - X-Api-Key
+#      - X-Amz-Security-Token
+#      - X-Amz-User-Agent
+#      - X-Amzn-Trace-Id
+#      - X-Requested-With
+#      - Accept
+#      - Access-Control-Allow-Methods
+#      - Access-Control-Allow-Origin
+#      - Access-Control-Allow-Headers
+#    allowedMethods:
+#      - OPTIONS
+#      - GET
+#      - POST
+#      - DELETE
+#      - PUT
+#      - PATCH
+#      - HEAD
+#    allowCredentials: true
+#    maxAge: 300
   payload: '2.0'
   # Using IAM to control API method access
   # ref: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-access-control-iam.html
@@ -33,12 +62,13 @@ iam:
           - dynamodb:BatchWriteItem
 #          - dynamodb:CreateTable
 #          - dynamodb:UpdateTable
-#          - dynamodb:DescribeStream
-#          - dynamodb:ListStreams
-#          - dynamodb:GetRecords
-#          - dynamodb:GetShardIterator
-#          - dynamodb:ListShards
+          - dynamodb:ListStreams
+          - dynamodb:DescribeStream
+          - dynamodb:GetShardIterator
+          - dynamodb:GetRecords
         Resource:
           - "arn:aws:dynamodb:${env:AWS_REGION}:*:table/${self:provider.environment.NAMESPACE}-main"
           - "arn:aws:dynamodb:${env:AWS_REGION}:*:table/${self:provider.environment.NAMESPACE}-main/index/*"
-#          - "arn:aws:dynamodb:${env:AWS_REGION}:*:table/${self:provider.environment.NAMESPACE}-main/stream/*"
+          - "arn:aws:dynamodb:${env:AWS_REGION}:*:table/${self:provider.environment.NAMESPACE}-main/stream/*"
+          - "arn:aws:dynamodb:${env:AWS_REGION}:*:table/${self:provider.environment.NAMESPACE}-types"
+          - "arn:aws:dynamodb:${env:AWS_REGION}:*:table/${self:provider.environment.NAMESPACE}-types/index/*"
