@@ -1,24 +1,31 @@
 # ref: https://www.serverless.com/framework/docs/guides/compose
+# sls (service_name:)deploy
+# sls (service_name:)remove
+# sls refresh-outputs
 services:
+  anything-web:
+    path: packages/infra/web
+  anything-database:
+    path: packages/infra/database
+  anything:
+    path: packages/api
+    params:
+      distributionDomainName: ${anything-web.distributionDomainName}
+    dependsOn:
+      - anything-web
   anything-auth:
     path: packages/infra/auth
     params:
       distributionDomainName: ${anything-web.distributionDomainName}
       httpApiRootArn: ${anything.httpApiRootArn}
     dependsOn:
-      - anything-web
       - anything
-  anything:
-    path: packages/api
-    params:
-      streamArn: ${anything-data.streamArn}
-    dependsOn:
-      - anything-data
+      - anything-web
   anything-data:
     path: packages/infra/data
     params:
       loggingBucket: ${anything-web.loggingBucket}
+      streamArn: ${anything-database.streamArn}
     dependsOn:
       - anything-web
-  anything-web:
-    path: packages/infra/web
+      - anything-database

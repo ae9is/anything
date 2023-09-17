@@ -7,4 +7,6 @@ Database resources are defined in `packages/api` to collocate the database schem
 with the migrations and seeding code needed for offline development plugins.
 
 - `auth` - Authentication and authorisation resources
-- `data` - Hosting / storage, data lake storage and analytics resources
+- `data` - Data lake storage and analytics resources
+- `web` - Web client hosting resources
+- `database` - DynamoDB database

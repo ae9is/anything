@@ -76,7 +76,7 @@ provider: ${file(./_provider.yml)}  # OK
 resources:
   # Array of files each with Resources object
   # ref: https://www.serverless.com/framework/docs/providers/aws/guide/variables#multiple-configuration-files
-  - ${file(./src/resources/database.yml)}
+  #- ${file(_resources.yml)}
   - Outputs:
       # Pass HTTP API endpoint to the auth resources so they know what to auth
       httpApiRootArn:

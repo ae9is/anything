@@ -1,0 +1,7 @@
+# ref: https://www.serverless.com/framework/docs/providers/aws/guide/serverless.yml
+service: anything-database
+frameworkVersion: "3"
+configValidationMode: warn
+provider: ${file(./_provider.yml)}  # OK
+resources:
+  - ${file(_resources.yml)}

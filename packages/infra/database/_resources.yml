@@ -43,21 +43,19 @@ Resources:
             - AttributeName: id
               KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
-      # Uncomment for deploying, following parameters are incompatible with serverless dynamodb local plugin
+      # Comment for local testing, incompatible with serverless dynamodb local plugin
       # ref: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html#Streams.Enabling
       # ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-dynamodb-table-streamspecification.html
-#      StreamSpecification:
-#        StreamEnabled: True
-#        StreamViewType: NEW_IMAGE
-#      KinesisStreamSpecification:
-#        StreamArn: ${param:streamArn}
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
 
   TypesTable:
     Type: 'AWS::DynamoDB::Table'
     # Force second table to be created sequentially to allow any future indices to be created on table
     # ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-dynamodb-table.html
     DependsOn: MainTable
-    DeletionPolicy: Retain
+    #DeletionPolicy: Retain
+    #UpdateReplacePolicy: Retain
     Properties:
       TableName: ${self:provider.environment.NAMESPACE}-types
       KeySchema:
@@ -67,3 +65,7 @@ Resources:
         - AttributeName: id
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
+
+Outputs:
+  streamArn:
+    Value: !GetAtt MainTable.StreamArn
