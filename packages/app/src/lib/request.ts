@@ -1,11 +1,16 @@
-// Send requests using amplify library
-import { API } from 'aws-amplify'
+import { SignatureV4 } from '@smithy/signature-v4'
+import { HttpRequest } from '@aws-sdk/protocol-http'
+import { Sha256 } from '@aws-crypto/sha256-browser'
+import { Amplify, API } from 'aws-amplify'
+
+import awsExports, { apiName} from '../config/amplify'
+Amplify.configure(awsExports)
 
 import logger from 'logger'
 import { AWS_REGION, API_HOST, API_VERSION } from '../config'
-//import { getCredentialsForServices } from './auth'
-import { apiName } from '../config/amplify'
+import { getCredentialsForApi } from './auth'
 import { removeEmptyProps } from './props'
+//import axios from 'axios'
 
 export type HttpMethod =
   | 'GET'
@@ -31,34 +36,45 @@ export interface RequestProps {
   queryParams?: QueryParameterBag
 }
 
-/*
-// Sign and send requests to HTTP gateway using AWS signature v4
-import { HttpRequest } from '@aws-sdk/protocol-http'
-//import { HttpRequest as HttpRequestType } from '@aws-sdk/types'
-import { SignatureV4 } from '@aws-sdk/signature-v4'
-import { Sha256 } from '@aws-crypto/sha256-browser'
-import { NodeHttpHandler } from '@aws-sdk/node-http-handler'
-import { QueryParameterBag } from '@aws-sdk/types'
+export async function request(props: RequestProps) {
+  return requestUsingCustom(props)
+}
 
+// Sign and send requests to HTTP gateway using AWS signature v4.
 // ref: https://stackoverflow.com/a/74645332
+// ref: https://docs.amplify.aws/guides/functions/graphql-from-lambda/q/platform/js/#iam-authorization
 export async function requestUsingCustom(props: RequestProps) {
   try {
     const { body = undefined, method, path, version = API_VERSION, queryParams = {} } = props
+    const fullPath = `${API_HOST}/${version}/${path}`
     const requestBody = JSON.stringify(body)
-    const request = new HttpRequest({
-      body: requestBody,
+    const endpoint = new URL(fullPath)
+    const requestToBeSigned = new HttpRequest({
+      method: method,
       headers: {
         'Content-Type': 'application/json',
-        host: API_HOST,
+        host: endpoint.host,
       },
-      hostname: API_HOST,
-      port: 443,
-      method: method,
-      path: `/${version}/${path}`,
-      query: queryParams,
+      hostname: endpoint.host,
+      body: requestBody,
+      path: endpoint.pathname,
+      query: removeEmptyProps(queryParams),
     })
-    const signedRequest = await signRequest(request)
-    const response = await sendRequest(signedRequest)
+    logger.debug('Request pre-sign: ', requestToBeSigned)
+    const signedRequest: HttpRequest = await signRequest(requestToBeSigned) as HttpRequest
+    logger.debug('Request post-sign: ', signedRequest)
+    //const response = await sendRequestAxios(fullPath, signedRequest)
+    const headerBag = signedRequest?.headers
+    logger.debug('Request post-sign headers: ', headerBag)
+    const headers: [string, string][] = Object.entries(headerBag)?.map(([key, val], idx) => [key, val])
+    logger.debug('Request headers: ', headers)
+    const request = new Request(fullPath, {
+      ...signedRequest, 
+      headers: new Headers(headers),
+      credentials: 'include',
+    })
+    logger.debug('Request Request: ', request)
+    const response = await sendRequest(request)
     return response
   } catch (e) {
     logger.error(e)
@@ -67,28 +83,89 @@ export async function requestUsingCustom(props: RequestProps) {
 }
 
 async function signRequest(request: HttpRequest) {
-  const credentials = await getCredentialsForServices()
+  const credentials = await getCredentialsForApi()
+  if (!credentials) {
+    throw new Error('Could not get credentials')
+  }
   const signer = new SignatureV4({
     credentials: credentials,
     region: AWS_REGION,
     service: 'execute-api',
     sha256: Sha256,
   })
-  // SignatureV4 just modifies the request's headers, if we pass in protocol-http/HttpRequest in,
-  //  even though the method signature is types/HttpRequest we should be able to just ignore that.
-  // ref: https://github.com/aws/aws-sdk-js-v3/blob/3bad0433/packages/signature-v4/src/SignatureV4.ts#L245
-  // ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/classes/_aws_sdk_signature_v4.SignatureV4.html#sign
   const signedRequest = await signer.sign(request)
-  return signedRequest as HttpRequest
+  return signedRequest
 }
 
-async function sendRequest(request: HttpRequest) {
-  const handler = new NodeHttpHandler()
-  const { response } = await handler.handle(request)
-  return response
+/*
+async function sendRequestAxios(fullPath: string, request: HttpRequest) {
+  let statusCode = 200
+  let responseBody
+  let statusText
+  try {
+    logger.debug('Fetching request ...')
+    const response = await axios({
+      ...request,
+      url: fullPath,
+      params: request?.query,
+    })
+    responseBody = response?.data
+    statusCode = response?.status
+    statusText = response?.statusText
+  } catch (error: any) {
+    statusCode = 500
+    if (error.response) {
+      responseBody = {
+        errors: [
+          {
+            message: error.response?.data || error,
+          },
+        ],
+      }
+      statusCode = error.response?.status ?? 500
+    } else if (error.request) {
+      logger.error('Request error: ', error?.request)
+    } else {
+      logger.error('Axios error: ', error?.message)
+    }
+  }
+  return {
+    data: responseBody,
+    status: statusCode,
+    statusText: statusText,
+  }
 }
 */
 
+async function sendRequest(request: Request) {
+  let statusCode = 200
+  let responseBody
+  let statusText
+  try {
+    logger.debug('Fetching request ...')
+    const response = await fetch(request)
+    responseBody = await response.json()
+    if (responseBody.errors) statusCode = 400
+  } catch (error: any) {
+    statusCode = 500
+    statusText = error?.message
+    responseBody = {
+      errors: [
+        {
+          message: error?.message || error,
+        },
+      ],
+    }
+  }
+  return {
+    data: JSON.stringify(responseBody),
+    status: statusCode,
+    statusText: statusText,
+  }
+}
+
+// Amplify does not obtain correct credentials (from cognito identity pool) and 
+//  so this method fails for IAM secured api.
 // ref: https://docs.amplify.aws/lib/restapi/fetch/q/platform/js/
 export async function requestUsingAmplify(props: RequestProps) {
   try {

@@ -1,6 +1,11 @@
-import { Auth } from 'aws-amplify'
+//import { fromCognitoIdentityPool } from '@aws-sdk/credential-providers'
+import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand, Credentials } from "@aws-sdk/client-cognito-identity"
+import { Amplify, Auth } from 'aws-amplify'
 import { CognitoUser } from 'amazon-cognito-identity-js'
 import logger from 'logger'
+import { AWS_ACCOUNT_ID, AWS_REGION, COGNITO_ID, IDENTITY_POOL_ID } from '../config'
+import awsExports from '../config/amplify'
+Amplify.configure(awsExports)
 
 async function signInWithUsernameAndPassword(username: string, password: string) {
   try {
@@ -38,7 +43,13 @@ export async function getUserAttr() {
     logger.log('Not signed in')
     return
   }
-  const attr = JSON.parse(userInfo?.attributes?.identities)?.[0] ?? {}
+  logger.debug('User info: ', userInfo)
+  const identities = userInfo?.attributes?.identities
+  if (!identities) {
+    logger.error('No user info identities')
+    return
+  }
+  const attr = JSON.parse(identities)?.[0] ?? {}
   // Additionally set a display name for convenience
   const displayName =
     attr?.preferred_username || attr?.name || attr?.userId || attr?.getUsername() || 'Guest'
@@ -47,7 +58,72 @@ export async function getUserAttr() {
   return attr
 }
 
-// ref: https://docs.amplify.aws/lib/auth/advanced/q/platform/js/#working-with-aws-service-objects
 export async function getCredentialsForServices() {
+  // ref: https://docs.amplify.aws/lib/auth/advanced/q/platform/js/#working-with-aws-service-objects
   return Auth.currentCredentials().then((credentials) => Auth.essentialCredentials(credentials))
+}
+
+export async function getCredentialsForApi() {
+  let creds //: AwsCredentialIdentity | Provider<AwsCredentialIdentity>
+
+  // Get authentication token from Amplify login
+  // ref: https://stackoverflow.com/questions/48777321
+  const session = await Auth.currentSession()
+  logger.debug('Session: ', session)
+  const idTokenJwt = session?.getIdToken()?.getJwtToken()
+
+  // Use Amplify token to retrieve credentials
+
+  // Ideally would simplify with fromCognitoIdentityPool() but the wrong credentials are retrieved
+  // ref: https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/loading-browser-credentials-cognito.html
+  // ref: https://stackoverflow.com/a/73024847
+//  const credProvider = fromCognitoIdentityPool({
+//    identityPoolId: IDENTITY_POOL_ID,
+//    accountId: AWS_ACCOUNT_ID,
+//    clientConfig: {
+//      region: AWS_REGION,
+//    },
+//    logins: {
+//      [COGNITO_ID]: idTokenJwt,
+//    },
+//  })
+//  const client = new CognitoIdentityClient({
+//    region: AWS_REGION,
+//    credentials: credProvider,
+//  })
+//  const creds = await client?.config?.credentials()
+
+  // Enhanced (simplified) authflow, manually calling low level API to retrieve correct credentials
+  // ref: https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html
+  const client = new CognitoIdentityClient({ region: AWS_REGION })
+  const getIdInput = {
+    AccountId: AWS_ACCOUNT_ID,
+    IdentityPoolId: IDENTITY_POOL_ID,
+    Logins: {
+      [COGNITO_ID]: idTokenJwt,
+    },
+  }
+  const getIdCommand = new GetIdCommand(getIdInput)
+  const getIdResp = await client.send(getIdCommand)
+  const identityId = getIdResp?.IdentityId
+  if (identityId) {
+    const getCredsInput = {
+      IdentityId: getIdResp?.IdentityId,
+      Logins: {
+        [COGNITO_ID]: idTokenJwt,
+      },
+    }
+    const getCredsCmd = new GetCredentialsForIdentityCommand(getCredsInput)
+    const getCredsResp = await client.send(getCredsCmd)
+    const credentials: Credentials | undefined = getCredsResp?.Credentials
+    creds = {
+      accessKeyId: credentials?.AccessKeyId ?? '',
+      secretAccessKey: credentials?.SecretKey ?? '',
+      sessionToken: credentials?.SessionToken,
+      expiration: credentials?.Expiration,
+    }
+  }
+
+  logger.debug('Creds: ', creds)
+  return creds
 }
