@@ -22,7 +22,8 @@
   },
   "packageManager": "npm@9.8.1",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/infra/*"
   ],
   "engines": {
     "node": ">=18"
