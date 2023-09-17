@@ -27,21 +27,36 @@ export function sendJson(data: any, statusCode: number = StatusCodes.OK, spacing
   return {
     statusCode,
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true,
-      'content-type': 'application/json',
+//      // CORS is configured in api gateway, and also ignores headers set here
+//      // ref: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-cors.html
+      'Content-Type': 'application/json',
+
+      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,X-Amz-Security-Token,Authorization,' + 
+        'X-Api-Key,X-Requested-With,Accept,Access-Control-Allow-Methods,Access-Control-Allow-Origin,' + 
+        'Access-Control-Allow-Headers,X-Amz-Content-Sha256',
+      'Access-Control-Allow-Origin': 'http://localhost:3000', //'https://<CLOUDFRONT_DOMAIN>.cloudfront.net',
+      'Access-Control-Allow-Methods': 'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT',
+      'Access-Control-Allow-Credentials': 'true',
     },
     body,
   }
 }
 
+// Note that IAM auth failure will not throw 403 here, instead HTTP API gateway will return its own Forbidden response
 export function sendError(error: any, statusCode: number = StatusCodes.INTERNAL_SERVER_ERROR) {
   const body = statusCode + ': ' + stringify(error)
   return {
     statusCode,
     headers: {
-      'content-type': 'text/plain',
+      'Content-Type': 'text/plain',
       'x-amzn-ErrorType': statusCode,
+
+      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,X-Amz-Security-Token,Authorization,' + 
+        'X-Api-Key,X-Requested-With,Accept,Access-Control-Allow-Methods,Access-Control-Allow-Origin,' + 
+        'Access-Control-Allow-Headers,X-Amz-Content-Sha256',
+      'Access-Control-Allow-Origin': 'http://localhost:3000', //'https://<CLOUDFRONT_DOMAIN>.cloudfront.net',
+      'Access-Control-Allow-Methods': 'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT',
+      'Access-Control-Allow-Credentials': 'true',
     },
     isBase64Encoded: false,
     body,

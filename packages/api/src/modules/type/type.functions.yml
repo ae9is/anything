@@ -6,3 +6,10 @@ listTypes:
         method: get
         authorizer:
           type: aws_iam
+
+listTypesOptions:
+  handler: src/modules/type/type_handler.typesOptions
+  events:
+    - httpApi:
+        path: /v1/types
+        method: options
