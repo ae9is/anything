@@ -158,7 +158,7 @@ async function sendRequest(request: Request) {
     }
   }
   return {
-    data: JSON.stringify(responseBody),
+    data: responseBody,
     status: statusCode,
     statusText: statusText,
   }
