@@ -13,4 +13,13 @@ const nextConfig = {
   trailingSlash: true,
 }
 
-module.exports = nextConfig
+// ref: https://www.npmjs.com/package/@next/bundle-analyzer
+let config = nextConfig
+if (process.env.CHECK_BUNDLE_SIZE === 'true') {
+  const withBundleAnalyzer = require('@next/bundle-analyzer')({
+    enabled: true,
+  })
+  config = withBundleAnalyzer(nextConfig)
+}
+
+module.exports = config

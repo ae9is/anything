@@ -20,7 +20,7 @@
     "serverless": "^3",
     "turbo": "latest"
   },
-  "packageManager": "npm@9.8.1",
+  "packageManager": "npm@10.1.0",
   "workspaces": [
     "packages/*",
     "packages/infra/*"

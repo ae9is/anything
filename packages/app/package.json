@@ -3,22 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "run-z clean --then next build",
     "clean": "rm -rf .next dist",
     "dev": "next dev -p 3000",
     "lint": "next lint",
     "start": "next start",
-    "update-packages": "ncu -u"
+    "update-packages": "ncu -u",
+    "s3-empty-bucket": "aws s3 rm s3://${S3_BUCKET:anything-dev-web} --recursive",
+    "s3-publish-to-bucket": "aws s3 sync dist s3://${S3_BUCKET:anything-dev-web}",
+    "s3-build-and-publish": "run-z build s3-publish-to-bucket"
   },
   "dependencies": {
-    "@aws-amplify/ui-react": "^5.0.4",
     "@aws-sdk/client-cognito-identity": "^3.414.0",
-    "@aws-sdk/credential-providers": "^3.410.0",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.14.3",
     "@mui/material": "^5.14.1",
-    "@mui/x-data-grid": "^6.10.1",
     "@mui/x-data-grid-premium": "^6.10.1",
     "@smithy/signature-v4": "^2.0.7",
     "aws-amplify": "^5.3.4",
@@ -36,6 +36,7 @@
     "yup": "^1.2.0"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^13.5.2",
     "@tailwindcss/typography": "^0.5.9",
     "@types/node": "^20.4.2",
     "@types/react": "^18.2.15",
@@ -45,6 +46,7 @@
     "eslint-config-custom": "*",
     "npm-check-updates": "^16.10.15",
     "postcss": "^8.4.26",
+    "run-z": "^2.0.0",
     "tailwindcss": "^3.3.3",
     "tsconfig": "*",
     "typescript": "^5.1.6"
