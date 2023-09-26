@@ -155,3 +155,6 @@ dist
 docker
 
 .vscode
+
+# next/bundle-analyzer output
+packages/app/analyze/
