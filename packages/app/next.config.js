@@ -18,6 +18,7 @@ let config = nextConfig
 if (process.env.CHECK_BUNDLE_SIZE === 'true') {
   const withBundleAnalyzer = require('@next/bundle-analyzer')({
     enabled: true,
+    openAnalyzer: true,
   })
   config = withBundleAnalyzer(nextConfig)
 }
