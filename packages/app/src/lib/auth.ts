@@ -38,24 +38,35 @@ export async function getUser(): Promise<CognitoUser | any> {
 }
 
 export async function getUserAttr() {
-  const userInfo = await Auth.currentUserInfo()
-  if (!userInfo) {
-    logger.log('Not signed in')
-    return
+  const defaultAttr = {
+    displayName: 'Guest'
   }
-  logger.debug('User info: ', userInfo)
-  const identities = userInfo?.attributes?.identities
-  if (!identities) {
-    logger.error('No user info identities')
-    return
+  try {
+    if (!Auth.currentAuthenticatedUser()) {
+      // Prevent exception from being thrown to console by Auth.currentUserInfo() if not logged in
+      throw new Error()
+    }
+    const userInfo = await Auth.currentUserInfo()
+    if (!userInfo) {
+      throw new Error()
+    }
+    logger.debug('User info: ', userInfo)
+    const identities = userInfo?.attributes?.identities
+    if (!identities) {
+      logger.error('No user info identities')
+      throw new Error()
+    }
+    const attr = JSON.parse(identities)?.[0] ?? {}
+    // Additionally set a display name for convenience
+    const displayName =
+      attr?.preferred_username || attr?.name || attr?.userId || attr?.getUsername() || 'Guest'
+    attr.displayName = displayName
+    logger.debug('User attributes: ', JSON.stringify(attr))
+    return attr
+  } catch (e) {
+    logger.log('Could not get user attributes')
+    return defaultAttr
   }
-  const attr = JSON.parse(identities)?.[0] ?? {}
-  // Additionally set a display name for convenience
-  const displayName =
-    attr?.preferred_username || attr?.name || attr?.userId || attr?.getUsername() || 'Guest'
-  attr.displayName = displayName
-  logger.debug('User attributes: ', JSON.stringify(attr))
-  return attr
 }
 
 export async function getCredentialsForServices() {
