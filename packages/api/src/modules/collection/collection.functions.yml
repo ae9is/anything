@@ -6,6 +6,12 @@ listCollections:
         method: get
         authorizer:
           type: aws_iam
+listCollectionsOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - httpApi:
+        path: /v1/types/{id}/collections
+        method: options
 getCollection:
   handler: src/modules/collection/collection_handler.collectionById
   events:
@@ -14,6 +20,12 @@ getCollection:
         method: get
         authorizer:
           type: aws_iam
+getCollectionOptions: # also putCollectionOptions, deleteCollectionOptions
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - httpApi:
+        path: /v1/collections/{id}
+        method: options
 putCollection:
   handler: src/modules/collection/collection_handler.upsertCollection
   events:
@@ -38,6 +50,12 @@ addItemsToCollection:
         method: put
         authorizer:
           type: aws_iam
+addItemsToCollectionOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - httpApi:
+        path: /v1/collections/{id}/items/add
+        method: options
 removeItemsFromCollection:
   handler: src/modules/collection/collection_handler.removeItemsFromCollection
   events:
@@ -46,3 +64,9 @@ removeItemsFromCollection:
         method: put
         authorizer:
           type: aws_iam
+removeItemsFromCollectionOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - httpApi:
+        path: /v1/collections/{id}/items/remove
+        method: options

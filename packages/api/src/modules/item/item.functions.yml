@@ -6,6 +6,12 @@ listItemsByTypeAndFilter:
         method: get
         authorizer:
           type: aws_iam
+listItemsByTypeAndFilterOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - httpApi:
+        path: /v1/types/{id}/items
+        method: options
 listItemsByCollection:
   handler: src/modules/item/item_handler.itemsByCollection
   events:
@@ -14,6 +20,12 @@ listItemsByCollection:
         method: get
         authorizer:
           type: aws_iam
+listItemsByCollectionOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - httpApi:
+        path: /v1/collections/{id}/items
+        method: options
 getItem:
   handler: src/modules/item/item_handler.itemById
   events:
@@ -22,6 +34,12 @@ getItem:
         method: get
         authorizer:
           type: aws_iam
+getItemOptions: # also postItemOptions, deleteItemOptions
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - httpApi:
+        path: /v1/items/{id}
+        method: options
 getItemVersions:
   handler: src/modules/item/item_handler.itemVersionsById
   events:
@@ -30,6 +48,12 @@ getItemVersions:
         method: get
         authorizer:
           type: aws_iam
+getItemVersionsOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - httpApi:
+        path: /v1/items/{id}/versions
+        method: options
 postItem:
   handler: src/modules/item/item_handler.upsertItem
   events:
@@ -46,6 +70,12 @@ postBatchItems:
         method: post
         authorizer:
           type: aws_iam
+postBatchItemsOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - httpApi:
+        path: /v1/items
+        method: options
 deleteItem:
   handler: src/modules/item/item_handler.deleteItem
   events:

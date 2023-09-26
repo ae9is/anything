@@ -6,3 +6,9 @@ healthz:
         method: get
         authorizer:
           type: aws_iam
+healthzOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - httpApi:
+        path: /v1/healthz
+        method: options

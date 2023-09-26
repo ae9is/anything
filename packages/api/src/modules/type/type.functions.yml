@@ -6,9 +6,8 @@ listTypes:
         method: get
         authorizer:
           type: aws_iam
-
 listTypesOptions:
-  handler: src/modules/type/type_handler.typesOptions
+  handler: src/modules/cors/cors_handler.options
   events:
     - httpApi:
         path: /v1/types

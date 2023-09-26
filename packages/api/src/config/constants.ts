@@ -22,3 +22,6 @@ export const AWS_REGION = awsRegion
 export const DATABASE_URL = databaseUrl
 export const API_PORT = process.env.API_PORT || '4000'
 export const LOCAL_API_HOST = `http://localhost:${API_PORT}`
+const PRODUCTION_APP_URL = process.env.PRODUCTION_APP_URL || '' // 'https://<subdomain>.cloudfront.net'
+const LOCAL_APP_URL = 'http://localhost:3000'
+export const ORIGIN = PRODUCTION_APP_URL || LOCAL_APP_URL
