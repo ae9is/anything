@@ -2,12 +2,13 @@ import { SignatureV4 } from '@smithy/signature-v4'
 import { HttpRequest } from '@aws-sdk/protocol-http'
 import { Sha256 } from '@aws-crypto/sha256-browser'
 import { Amplify, API } from 'aws-amplify'
+import { StatusCodes } from 'http-status-codes'
 
 import awsExports, { apiName} from '../config/amplify'
 Amplify.configure(awsExports)
 
 import logger from 'logger'
-import { AWS_REGION, API_HOST, API_VERSION } from '../config'
+import { AWS_REGION, API_HOST, API_VERSION, PRODUCTION_APP_URL } from '../config'
 import { getCredentialsForApi } from './auth'
 import { removeEmptyProps } from './props'
 //import axios from 'axios'
@@ -46,18 +47,35 @@ export async function request(props: RequestProps) {
 export async function requestUsingCustom(props: RequestProps) {
   try {
     const { body = undefined, method, path, version = API_VERSION, queryParams = {} } = props
-    const fullPath = `${API_HOST}/${version}/${path}`
     const requestBody = JSON.stringify(body)
-    const endpoint = new URL(fullPath)
+    const executeApiPath = `${API_HOST}/${version}/${path}`
+    const executeApiEndpoint = new URL(executeApiPath)
+
+    /*
+    const cloudFrontPath = `${PRODUCTION_APP_URL}/${version}/${path}`
+    const cloudFrontEndpoint = new URL(cloudFrontPath)
+
+    // For CloudFront reverse proxy to API Gateway with IAM auth, need to sign request as if it were being send to API Gateway
+    // ref: https://stackoverflow.com/questions/43060915
+    // ref: https://stackoverflow.com/questions/48815143
+    */
+
+    // Need to conditionally set content-type header, api doesn't support content-type for get requests
+    //  (for ex, to intelligently infer which type to return).
+    const contentTypeHeader: {} | { 'Content-Type': string } = (method === 'GET' || method === 'HEAD') ? {} : {
+      'Content-Type': 'application/json',
+    }
     const requestToBeSigned = new HttpRequest({
       method: method,
       headers: {
-        'Content-Type': 'application/json',
-        host: endpoint.host,
+        ...contentTypeHeader,
+        // Modifying host header is forbidden in browsers and this will be stripped from the request,
+        //  but we need to set here just for the authorization header
+        host: executeApiEndpoint.host,
       },
-      hostname: endpoint.host,
+      hostname: executeApiEndpoint.host,
       body: requestBody,
-      path: endpoint.pathname,
+      path: executeApiEndpoint.pathname,
       query: removeEmptyProps(queryParams),
     })
     logger.debug('Request pre-sign: ', requestToBeSigned)
@@ -68,12 +86,17 @@ export async function requestUsingCustom(props: RequestProps) {
     logger.debug('Request post-sign headers: ', headerBag)
     const headers: [string, string][] = Object.entries(headerBag)?.map(([key, val], idx) => [key, val])
     logger.debug('Request headers: ', headers)
-    const request = new Request(fullPath, {
+    //const request = new Request(cloudFrontPath, { // CloudFront proxying API Gateway using IAM auth only works with custom domain
+    const request = new Request(executeApiPath, {
       ...signedRequest, 
       headers: new Headers(headers),
       credentials: 'include',
     })
     logger.debug('Request Request: ', request)
+    logger.debug('Request Request.headers:')
+    request?.headers?.forEach((value, key) => {
+      logger.debug(`${key}: ${value}\n`)
+    })
     const response = await sendRequest(request)
     return response
   } catch (e) {
@@ -138,29 +161,22 @@ async function sendRequestAxios(fullPath: string, request: HttpRequest) {
 */
 
 async function sendRequest(request: Request) {
-  let statusCode = 200
+  let status = StatusCodes.OK
   let responseBody
   let statusText
   try {
     logger.debug('Fetching request ...')
     const response = await fetch(request)
+    status = response.status
+    statusText = response.statusText
     responseBody = await response.json()
-    if (responseBody.errors) statusCode = 400
   } catch (error: any) {
-    statusCode = 500
-    statusText = error?.message
-    responseBody = {
-      errors: [
-        {
-          message: error?.message || error,
-        },
-      ],
-    }
+    logger.error('Error sending request: ', error)
   }
   return {
-    data: responseBody,
-    status: statusCode,
-    statusText: statusText,
+    data: responseBody?.data,
+    status,
+    statusText,
   }
 }
 
