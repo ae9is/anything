@@ -3,16 +3,20 @@
 # sls (service_name:)remove
 # sls refresh-outputs
 services:
-  anything-web:
-    path: packages/infra/web
   anything-database:
     path: packages/infra/database
   anything:
     path: packages/api
+#    params:
+#      distributionDomainName: ${anything-web.distributionDomainName}
+#    dependsOn:
+#      - anything-web
+  anything-web:
+    path: packages/infra/web
     params:
-      distributionDomainName: ${anything-web.distributionDomainName}
+      httpApiDomainName: ${anything.httpApiDomainName}
     dependsOn:
-      - anything-web
+      - anything
   anything-auth:
     path: packages/infra/auth
     params:

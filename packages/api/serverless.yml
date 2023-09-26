@@ -81,3 +81,5 @@ resources:
       # Pass HTTP API endpoint to the auth resources so they know what to auth
       httpApiRootArn:
         Value: !Sub 'arn:aws:execute-api:${env:AWS_REGION}:${AWS::AccountId}:${HttpApi}'
+      httpApiDomainName:
+        Value: !Sub '${HttpApi}.execute-api.${env:AWS_REGION}.amazonaws.com'

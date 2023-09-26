@@ -9,8 +9,8 @@ environment:
   NAMESPACE: ${self:service}-${sls:stage}
   AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
 httpApi:
-  cors: true
   # ref: https://www.serverless.com/framework/docs/providers/aws/events/http-api#cors-setup
+#  cors: true
 #  cors:
 #    allowedOrigins:
 #      - http://localhost:3000

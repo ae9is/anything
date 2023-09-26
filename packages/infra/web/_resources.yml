@@ -69,10 +69,10 @@ Resources:
             # ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudfront-distribution-s3originconfig.html#cfn-cloudfront-distribution-s3originconfig-originaccessidentity
             OriginAccessIdentity: ""
           OriginAccessControlId: !GetAtt CloudFrontOriginAccessControl.Id
-  #        - DomainName: !Sub "${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
-  #          Id: ApiOrigin
-  #          CustomOriginConfig:
-  #            OriginProtocolPolicy: https-only
+        - DomainName: ${param:httpApiDomainName}
+          Id: ApiOrigin
+          CustomOriginConfig:
+            OriginProtocolPolicy: https-only
         Enabled: True
         DefaultRootObject: index.html
         DefaultCacheBehavior:
@@ -88,17 +88,24 @@ Resources:
           # ref: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html#managed-response-headers-policies-security
           ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
           ViewerProtocolPolicy: redirect-to-https
-  #        CacheBehaviors:
-  #          - PathPattern: "v1/hello"
-  #            AllowedMethods:
-  #            - GET
-  #            - HEAD
-  #            - OPTIONS
-  #            TargetOriginId: ApiOrigin
-  #            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # CachingDisabled
-  #            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # AllViewerExceptHostHeader
-  #            ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
-  #            ViewerProtocolPolicy: redirect-to-https
+          Compress: True
+        CacheBehaviors:
+          - PathPattern: "v1/*"
+            AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST
+            - DELETE
+            TargetOriginId: ApiOrigin
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # CachingDisabled
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # AllViewerExceptHostHeader
+            #OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3 # AllViewer, can only be used with custom domain
+            ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
+            ViewerProtocolPolicy: https-only
+            Compress: True
         PriceClass: PriceClass_All
         Logging:
           Bucket: !GetAtt LoggingBucket.RegionalDomainName
