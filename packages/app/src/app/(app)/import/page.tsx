@@ -44,7 +44,7 @@ export default function Page() {
             body: json,
           })
           if (json.length !== res?.itemCount) {
-            logger.error(`Sent ${json.length} items and ${res?.itemCount} passed validation`)
+            logger.error(`Sent ${json.length} items and ${res?.itemCount ?? 'none'} passed validation`)
             throw Error('Some items failed')
           }
         } catch (e) {
