@@ -137,10 +137,10 @@ Resources:
                 Action:
                   - "execute-api:Invoke"
                 Resource:
-                - '${param:httpApiRootArn}/*/GET/healthz'
-                - '${param:httpApiRootArn}/*/GET/types/*'
-                - '${param:httpApiRootArn}/*/GET/items/*'
-                - '${param:httpApiRootArn}/*/GET/collections/*'
+                - '${param:httpApiRootArn}/*/GET/v*/healthz'
+                - '${param:httpApiRootArn}/*/GET/v*/types/*'
+                - '${param:httpApiRootArn}/*/GET/v*/items/*'
+                - '${param:httpApiRootArn}/*/GET/v*/collections/*'
 
   WriteRole:
     Type: AWS::IAM::Role
@@ -182,14 +182,18 @@ Resources:
                 Action:
                   - "execute-api:Invoke"
                 Resource:
-                - '${param:httpApiRootArn}/*/GET/healthz'
-                - '${param:httpApiRootArn}/*/GET/types/*'
-                - '${param:httpApiRootArn}/*/GET/items/*'
-                - '${param:httpApiRootArn}/*/GET/collections/*'
-                - '${param:httpApiRootArn}/*/POST/items/*'
-                - '${param:httpApiRootArn}/*/PUT/collections/*'
-                - '${param:httpApiRootArn}/*/DELETE/items/*'
-                - '${param:httpApiRootArn}/*/DELETE/collections/*'
+                # ARN format for APIs: arn:partition:execute-api:region:account-id:api-id/stage/http-method/resource-path
+                # ref: https://docs.aws.amazon.com/apigateway/latest/developerguide/arn-format-reference.html
+                #
+                # General ARN format: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
+                - '${param:httpApiRootArn}/*/GET/v*/healthz'
+                - '${param:httpApiRootArn}/*/GET/v*/types/*'
+                - '${param:httpApiRootArn}/*/GET/v*/items/*'
+                - '${param:httpApiRootArn}/*/GET/v*/collections/*'
+                - '${param:httpApiRootArn}/*/POST/v*/items/*'
+                - '${param:httpApiRootArn}/*/PUT/v*/collections/*'
+                - '${param:httpApiRootArn}/*/DELETE/v*/items/*'
+                - '${param:httpApiRootArn}/*/DELETE/v*/collections/*'
 
   UnauthRole:
     Type: AWS::IAM::Role
