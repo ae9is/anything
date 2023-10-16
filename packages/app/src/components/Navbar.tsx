@@ -14,7 +14,9 @@ export function Navbar() {
   const links = [
     //
     'View',
-    'Import'
+    'Import',
+    'Healthz',
+    'Test'
   ]
   function navbarLinks(modal?: boolean) {
     return (

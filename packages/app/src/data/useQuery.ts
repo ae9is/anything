@@ -15,6 +15,7 @@ export interface QueryOptions {
 
 export function useQuery(query: Query, options?: QueryOptions) {
   const key = getRequestKeyFromQuery(query, options)
+  logger.debug('Using query with key: ', key)
   // ref: https://swr.vercel.app/docs/arguments#passing-objects
   return useSWR(key, (key) => requester(key))
 }

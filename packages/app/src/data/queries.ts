@@ -62,4 +62,8 @@ export const queries: Record<string, Query> = {
     path: (id: string) => `items/${id}`,
     method: 'DELETE',
   },
+  healthz: {
+    path: () => `healthz`,
+    method: 'GET',
+  },
 }
