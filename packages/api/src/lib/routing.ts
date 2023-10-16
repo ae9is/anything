@@ -1,10 +1,10 @@
 import { StatusCodes } from 'http-status-codes'
 import { send } from './response'
-import { APIGatewayProxyEventV2 } from 'aws-lambda'
+import { APIGatewayProxyEventQueryStringParameters, APIGatewayProxyEventV2 } from 'aws-lambda'
 
 export async function getByQuery(
   event: APIGatewayProxyEventV2,
-  resolver: (query: any) => Promise<any>
+  resolver: (query: APIGatewayProxyEventQueryStringParameters) => Promise<any>
 ) {
   const query = event?.queryStringParameters ?? {}
   const data = await resolver(query)
@@ -25,7 +25,7 @@ export async function getById(
 
 export async function getByIdAndQuery(
   event: APIGatewayProxyEventV2,
-  resolver: (id: string, query: any) => Promise<any>
+  resolver: (id: string, query?: APIGatewayProxyEventQueryStringParameters) => Promise<any>
 ) {
   const id = event?.pathParameters?.id
   const query = event?.queryStringParameters

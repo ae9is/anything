@@ -354,6 +354,14 @@ export const queryByTypeAndFilter = async (
   limit?: number,
   ascendingSortKey?: boolean
 ) => {
+  logger.debug('queryByTypeAndFilter...')
+  logger.debug('type: ', type)
+  logger.debug('filter: ', filter)
+  logger.debug('startKey: ', startKey)
+  logger.debug('index: ', index)
+  logger.debug('indexPartitionKey: ', indexPartitionKey)
+  logger.debug('limit: ', limit)
+  logger.debug('asc: ', ascendingSortKey)
   const decodedStartKey = decodeKey(startKey)
   const sortKeyExpression = filter?.sortKeyExpression ? ' and ' + filter?.sortKeyExpression : ''
   const keyConditionExpression = '#type = :type' + sortKeyExpression
@@ -381,6 +389,7 @@ export const queryByTypeAndFilter = async (
     FilterExpression: filter?.filterExpression,
     ExclusiveStartKey: decodedStartKey,
     Limit: limit,
+    // ref: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-ScanIndexForward
     ScanIndexForward: ascendingSortKey,
   })
   const resp = await ddbDocClient.send(cmd)

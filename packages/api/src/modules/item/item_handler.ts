@@ -1,5 +1,6 @@
-import { APIGatewayProxyEventV2 } from 'aws-lambda'
+import { APIGatewayProxyEventQueryStringParameters, APIGatewayProxyEventV2 } from 'aws-lambda'
 import { Filter, parse } from 'utils'
+import logger from 'logger'
 import { middyfy } from '../../lib/middy'
 import { changeBatch, changeById, deleteById, getById, getByIdAndQuery } from '../../lib/routing'
 import { batchWriteFromJson, putItem, queryItemVersions } from '../../store/store'
@@ -39,21 +40,27 @@ async function resolveItemsByCollection(id: string) {
 }
 
 export const itemsByTypeAndFilter = middyfy(async (event: APIGatewayProxyEventV2) => {
+  logger.debug('Handling itemsByTypeAndFilter...')
   return getByIdAndQuery(event, resolveItemsByTypeAndFilter)
 })
 
-async function resolveItemsByTypeAndFilter(type: string, query: any) {
+async function resolveItemsByTypeAndFilter(type: string, query?: APIGatewayProxyEventQueryStringParameters) {
+  logger.debug('Resolving resolveItemsByTypeAndFilter...')
   const attributeNames = query?.attributeNames ? parse(query?.attributeNames) : undefined
+  logger.debug('attribute names: ', attributeNames)
   const attributeValues = query?.attributeValues ? parse(query?.attributeValues) : undefined
+  logger.debug('attribute values: ', attributeNames)
   const filter: Filter = {
     sortKeyExpression: query?.sortKeyExpression,
     filterExpression: query?.filterExpression,
     attributeNames,
     attributeValues,
   }
+  logger.debug('sort key expression: ', filter?.sortKeyExpression)
+  logger.debug('filter expression: ', filter?.filterExpression)
   const startKey = query?.startKey
-  const limit = query?.limit
-  const asc = query?.asc
+  const limit: number | undefined = Number(query?.limit) || undefined // No NaN, 0
+  const asc: boolean | undefined = (query?.asc !== 'false') // Default to true, ascending sort
   return getItemsByTypeAndFilter(type, filter, startKey, limit, asc)
 }
 
