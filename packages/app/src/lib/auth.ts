@@ -3,6 +3,7 @@ import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand, 
 import { Amplify, Auth } from 'aws-amplify'
 import { CognitoUser } from 'amazon-cognito-identity-js'
 import logger from 'logger'
+import { stringify } from 'utils'
 import { AWS_ACCOUNT_ID, AWS_REGION, COGNITO_ID, IDENTITY_POOL_ID } from '../config'
 import awsExports from '../config/amplify'
 Amplify.configure(awsExports)
@@ -61,7 +62,7 @@ export async function getUserAttr() {
     const displayName =
       attr?.preferred_username || attr?.name || attr?.userId || attr?.getUsername() || 'Guest'
     attr.displayName = displayName
-    logger.debug('User attributes: ', JSON.stringify(attr))
+    logger.debug('User attributes: ', stringify(attr))
     return attr
   } catch (e) {
     logger.log('Could not get user attributes')

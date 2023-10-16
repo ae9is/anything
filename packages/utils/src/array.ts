@@ -2,6 +2,7 @@
 
 import _ from 'lodash'
 import logger from 'logger'
+import { stringify } from './json'
 
 // Split an array (for ex of JSON objects) into chunks based on each chunk having a certain max file size.
 // Flag allows including or excluding items of indeterminate size. If included, item will be in a chunk by itself.
@@ -9,7 +10,7 @@ import logger from 'logger'
 // ref: https://stackoverflow.com/questions/23318037/size-of-json-object-in-kbs-mbs
 function getObjectFileSize(obj: any) {
   try {
-    const size = new TextEncoder().encode(JSON.stringify(obj)).length
+    const size = new TextEncoder().encode(stringify(obj)).length
     return size
   } catch (e) {
     logger.error('Error calculating object file size')

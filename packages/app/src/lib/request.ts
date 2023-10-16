@@ -8,6 +8,7 @@ import awsExports, { apiName} from '../config/amplify'
 Amplify.configure(awsExports)
 
 import logger from 'logger'
+import { stringify } from 'utils'
 import { AWS_REGION, API_HOST, API_VERSION, PRODUCTION_APP_URL } from '../config'
 import { getCredentialsForApi } from './auth'
 import { removeEmptyProps } from './props'
@@ -47,7 +48,7 @@ export async function request(props: RequestProps) {
 export async function requestUsingCustom(props: RequestProps) {
   try {
     const { body = undefined, method, path, version = API_VERSION, queryParams = {} } = props
-    const requestBody = JSON.stringify(body)
+    const requestBody = stringify(body)
     const executeApiPath = `${API_HOST}/${version}/${path}`
     const executeApiEndpoint = new URL(executeApiPath)
 
@@ -186,7 +187,7 @@ async function sendRequest(request: Request) {
 export async function requestUsingAmplify(props: RequestProps) {
   try {
     const { body = undefined, method, path, version = API_VERSION, queryParams = {} } = props
-    const requestBody = JSON.stringify(body)
+    const requestBody = stringify(body)
     const params = {
       body: requestBody,
       headers: {
