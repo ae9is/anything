@@ -19,12 +19,12 @@ export interface Filter {
   // Placeholder for attribute name, i.e. { "#c": "Comment" }. Number sign (#) is mandatory.
   // Needed since DynamoDB has reserved words, and dots and hyphens are also reserved.
   // ref: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ExpressionAttributeNames.html
-  attributeNames?: Record<string, string>
+  attributeNames?: { [x: string]: string }
 
   // Needed to compare an attribute to a value. ex: { ":c": { "Black" }, ":p": { 500 } }. Colon (:) is mandatory.
   // DynamoDB document client takes care of converting javascript types to keys i.e. { "Black" } => { "S": "Black" }.
   // ref: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ExpressionAttributeValues.html
-  attributeValues?: Record<string, any>
+  attributeValues?: { [x: string] : any }
 
   // Could also add projection expressions i.e. specify which attributes are retrieved
   // ref: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ProjectionExpressions.html
