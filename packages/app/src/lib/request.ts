@@ -11,7 +11,7 @@ import logger from 'logger'
 import { stringify } from 'utils'
 import { AWS_REGION, API_HOST, API_VERSION, PRODUCTION_APP_URL } from '../config'
 import { getCredentialsForApi } from './auth'
-import { removeEmptyProps } from './props'
+import { encodeProps, removeEmptyProps } from './props'
 //import axios from 'axios'
 
 export type HttpMethod =
@@ -51,6 +51,10 @@ export async function requestUsingCustom(props: RequestProps) {
     const requestBody = stringify(body)
     const executeApiPath = `${API_HOST}/${version}/${path}`
     const executeApiEndpoint = new URL(executeApiPath)
+    const encodedQueryParams = encodeProps(removeEmptyProps(queryParams))
+    const queryString = queryParamsToUrlString(encodedQueryParams)
+    const requestPath = `${executeApiPath}${queryString}`
+    logger.debug('Request path: ', requestPath)
 
     /*
     const cloudFrontPath = `${PRODUCTION_APP_URL}/${version}/${path}`
@@ -77,7 +81,7 @@ export async function requestUsingCustom(props: RequestProps) {
       hostname: executeApiEndpoint.host,
       body: requestBody,
       path: executeApiEndpoint.pathname,
-      query: removeEmptyProps(queryParams),
+      query: encodedQueryParams,
     })
     logger.debug('Request pre-sign: ', requestToBeSigned)
     const signedRequest: HttpRequest = await signRequest(requestToBeSigned) as HttpRequest
@@ -85,10 +89,14 @@ export async function requestUsingCustom(props: RequestProps) {
     //const response = await sendRequestAxios(fullPath, signedRequest)
     const headerBag = signedRequest?.headers
     logger.debug('Request post-sign headers: ', headerBag)
-    const headers: [string, string][] = Object.entries(headerBag)?.map(([key, val], idx) => [key, val])
+    const headers: [string, string][] = Object.entries(headerBag)?.map(([key, val]) => [key, val])
     logger.debug('Request headers: ', headers)
+    logger.debug('Request query: ', signedRequest?.query)
+    const requestQueryParams = Object.entries(signedRequest?.query)?.map(([key, val]) => [key, val])
+    logger.debug('Request query params: ', requestQueryParams)
     //const request = new Request(cloudFrontPath, { // CloudFront proxying API Gateway using IAM auth only works with custom domain
-    const request = new Request(executeApiPath, {
+    // ref: https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options
+    const request = new Request(requestPath, {
       ...signedRequest, 
       headers: new Headers(headers),
       credentials: 'include',
@@ -104,6 +112,12 @@ export async function requestUsingCustom(props: RequestProps) {
     logger.error(e)
     throw e
   }
+}
+
+function queryParamsToUrlString(queryParams: any) {
+  const paramStrings = Object.entries(queryParams).map(([key, val]) => `${key}=${val}`)
+  const queryString = paramStrings?.length > 0 ? '?' + paramStrings?.join('&') : ''
+  return queryString
 }
 
 async function signRequest(request: HttpRequest) {

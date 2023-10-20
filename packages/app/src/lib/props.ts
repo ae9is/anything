@@ -17,3 +17,12 @@ export function removeEmptyProps(object: any) {
   })
   return newObject
 }
+
+// Shallowly uri encodes object props
+export function encodeProps(object: any) {
+  let newObject: any = {}
+  Object.keys(object).forEach((key) => {
+    newObject[key] = encodeURIComponent(object[key])
+  })
+  return newObject
+}
