@@ -17,13 +17,11 @@ export default function Page() {
 
   let res
   if (error) {
-    res = <p>Error fetching!</p>
+    res = 'Error fetching!'
   } else if (isLoading) {
-    res = <p>Loading</p>
+    res = 'Loading'
   } else {
-    res = (
-      <p>{healthz}</p>
-    )
+    res = healthz
   }
 
   const path = '/' + query.path('')
