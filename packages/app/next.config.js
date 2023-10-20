@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
   reactStrictMode: true,
   // Build static export of app
   // ref: https://nextjs.org/docs/app/building-your-application/deploying/static-exports#configuration
