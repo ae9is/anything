@@ -1,14 +1,14 @@
 listTypes:
   handler: src/modules/type/type_handler.types
   events:
-    - httpApi:
-        path: /v1/types
+    - http:
+        path: /types
         method: get
         authorizer:
           type: aws_iam
 listTypesOptions:
   handler: src/modules/cors/cors_handler.options
   events:
-    - httpApi:
-        path: /v1/types
+    - http:
+        path: /types
         method: options

@@ -1,15 +1,15 @@
-import { APIGatewayProxyEventV2 } from 'aws-lambda'
+import { APIGatewayProxyEventQueryStringParameters, APIGatewayProxyEventV2 } from 'aws-lambda'
 import { middyfy } from '../../lib/middy'
 import { deleteCollectionItems, getCollectionById, getCollectionsByType, putCollection, putCollectionItems } from './collection.store'
-import { changeById, deleteById, getById, getByIdAndQuery } from '../../lib/routing'
+import { changeById, deleteById, getById, getByIdAndQuery, getPaginationParamsFromQuery } from '../../lib/routing'
 import { deleteCollection as deleteColl } from './collection.store'
 
 export const collectionsByType = middyfy(async (event: APIGatewayProxyEventV2) => {
   return getByIdAndQuery(event, resolveCollectionsByType)
 })
 
-async function resolveCollectionsByType(type: string, query?: any) {
-  const { startKey, limit, asc } = query || {}
+async function resolveCollectionsByType(type: string, query?: APIGatewayProxyEventQueryStringParameters) {
+  const { startKey, limit, asc } = getPaginationParamsFromQuery(query)
   return getCollectionsByType(type, startKey, limit, asc)
 }
 

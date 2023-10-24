@@ -137,10 +137,10 @@ Resources:
                 Action:
                   - "execute-api:Invoke"
                 Resource:
-                - '${param:httpApiRootArn}/*/GET/v*/healthz'
-                - '${param:httpApiRootArn}/*/GET/v*/types/*'
-                - '${param:httpApiRootArn}/*/GET/v*/items/*'
-                - '${param:httpApiRootArn}/*/GET/v*/collections/*'
+                - '${param:apiRootArn}/*/GET/healthz'
+                - '${param:apiRootArn}/*/GET/types/*'
+                - '${param:apiRootArn}/*/GET/items/*'
+                - '${param:apiRootArn}/*/GET/collections/*'
 
   WriteRole:
     Type: AWS::IAM::Role
@@ -186,14 +186,14 @@ Resources:
                 # ref: https://docs.aws.amazon.com/apigateway/latest/developerguide/arn-format-reference.html
                 #
                 # General ARN format: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
-                - '${param:httpApiRootArn}/*/GET/v*/healthz'
-                - '${param:httpApiRootArn}/*/GET/v*/types/*'
-                - '${param:httpApiRootArn}/*/GET/v*/items/*'
-                - '${param:httpApiRootArn}/*/GET/v*/collections/*'
-                - '${param:httpApiRootArn}/*/POST/v*/items/*'
-                - '${param:httpApiRootArn}/*/PUT/v*/collections/*'
-                - '${param:httpApiRootArn}/*/DELETE/v*/items/*'
-                - '${param:httpApiRootArn}/*/DELETE/v*/collections/*'
+                - '${param:apiRootArn}/*/GET/healthz'
+                - '${param:apiRootArn}/*/GET/types/*'
+                - '${param:apiRootArn}/*/GET/items/*'
+                - '${param:apiRootArn}/*/GET/collections/*'
+                - '${param:apiRootArn}/*/POST/items/*'
+                - '${param:apiRootArn}/*/PUT/collections/*'
+                - '${param:apiRootArn}/*/DELETE/items/*'
+                - '${param:apiRootArn}/*/DELETE/collections/*'
 
   UnauthRole:
     Type: AWS::IAM::Role

@@ -1,7 +1,6 @@
 corsOptions:
   handler: src/modules/cors/cors_handler.options
   events:
-    - httpApi:
-        path: /v1/{proxy+}
-        #path: /{proxy+}
+    - http:
+        path: /{proxy+}
         method: options

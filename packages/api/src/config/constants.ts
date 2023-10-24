@@ -1,8 +1,6 @@
 export const NODE_ENV = process.env.NODE_ENV || 'development'
 export const IS_OFFLINE = NODE_ENV === 'development' && (process.env.IS_OFFLINE || false)
-export const API_VERSION = process.env.API_VERSION || '1'
 export const STAGE = process.env.STAGE || 'dev'
-export const SERVICE_NAME = 'anything'
 const LOCALSTACK_PORT = process.env.LOCALSTACK_PORT
 let awsRegion
 let databaseUrl

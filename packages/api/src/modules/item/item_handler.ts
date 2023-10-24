@@ -2,7 +2,7 @@ import { APIGatewayProxyEventQueryStringParameters, APIGatewayProxyEventV2 } fro
 import { Filter, parse } from 'utils'
 import logger from 'logger'
 import { middyfy } from '../../lib/middy'
-import { changeBatch, changeById, deleteById, getById, getByIdAndQuery } from '../../lib/routing'
+import { changeBatch, changeById, deleteById, getById, getByIdAndQuery, getPaginationParamsFromQuery } from '../../lib/routing'
 import { batchWriteFromJson, putItem, queryItemVersions } from '../../store/store'
 import {
   deleteItem as deleteItm,
@@ -24,10 +24,8 @@ export const itemVersionsById = middyfy(async (event: APIGatewayProxyEventV2) =>
   return getByIdAndQuery(event, resolveItemVersionsById)
 })
 
-async function resolveItemVersionsById(id: string, query: any) {
-  const startKey = query?.startKey
-  const limit = query?.limit
-  const asc = query?.asc
+async function resolveItemVersionsById(id: string, query?: APIGatewayProxyEventQueryStringParameters) {
+  const { startKey, limit, asc } = getPaginationParamsFromQuery(query)
   return queryItemVersions(id, startKey, limit, asc)
 }
 
@@ -58,9 +56,7 @@ async function resolveItemsByTypeAndFilter(type: string, query?: APIGatewayProxy
   }
   logger.debug('sort key expression: ', filter?.sortKeyExpression)
   logger.debug('filter expression: ', filter?.filterExpression)
-  const startKey = query?.startKey
-  const limit: number | undefined = Number(query?.limit) || undefined // No NaN, 0
-  const asc: boolean | undefined = (query?.asc !== 'false') // Default to true, ascending sort
+  const { startKey, limit, asc } = getPaginationParamsFromQuery(query)
   return getItemsByTypeAndFilter(type, filter, startKey, limit, asc)
 }
 

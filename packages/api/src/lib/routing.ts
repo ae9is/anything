@@ -76,3 +76,10 @@ export async function deleteById(
   }
   return send(`Failed to delete ${id}`, StatusCodes.INTERNAL_SERVER_ERROR)
 }
+
+export function getPaginationParamsFromQuery(query?: APIGatewayProxyEventQueryStringParameters) {
+  const startKey = query?.startKey
+  const limit: number | undefined = Number(query?.limit) || undefined // No NaN, 0
+  const asc: boolean | undefined = (query?.asc !== 'false') // Default to true, ascending sort
+  return { startKey, limit, asc }
+}

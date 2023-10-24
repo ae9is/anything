@@ -14,14 +14,14 @@ services:
   anything-web:
     path: packages/infra/web
     params:
-      httpApiDomainName: ${anything.httpApiDomainName}
+      apiDomainName: ${anything.apiDomainName}
     dependsOn:
       - anything
   anything-auth:
     path: packages/infra/auth
     params:
       distributionDomainName: ${anything-web.distributionDomainName}
-      httpApiRootArn: ${anything.httpApiRootArn}
+      apiRootArn: ${anything.apiRootArn}
     dependsOn:
       - anything
       - anything-web

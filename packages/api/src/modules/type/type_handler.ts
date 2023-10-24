@@ -1,14 +1,13 @@
-import { APIGatewayProxyEventV2 } from 'aws-lambda'
+import { APIGatewayProxyEventQueryStringParameters, APIGatewayProxyEventV2 } from 'aws-lambda'
 import { middyfy } from '../../lib/middy'
 import { getTypes } from './type.store'
-import { getByQuery } from '../../lib/routing'
+import { getByQuery, getPaginationParamsFromQuery } from '../../lib/routing'
 
 export const types = middyfy(async (event: APIGatewayProxyEventV2) => {
   return getByQuery(event, resolveTypes)
 })
 
-async function resolveTypes(query: any) {
-  const { startKey, limit } = query || {}
-  const limitN = limit ? Number(limit) : undefined
-  return getTypes(startKey, limitN)
+async function resolveTypes(query?: APIGatewayProxyEventQueryStringParameters) {
+  const { startKey, limit } = getPaginationParamsFromQuery(query)
+  return getTypes(startKey, limit)
 }

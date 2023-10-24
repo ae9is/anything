@@ -9,7 +9,7 @@ Amplify.configure(awsExports)
 
 import logger from 'logger'
 import { stringify } from 'utils'
-import { AWS_REGION, API_HOST, API_VERSION, PRODUCTION_APP_URL } from '../config'
+import { AWS_REGION, API_HOST, PRODUCTION_APP_URL } from '../config'
 import { getCredentialsForApi } from './auth'
 import { encodeProps, removeEmptyProps } from './props'
 //import axios from 'axios'
@@ -34,7 +34,6 @@ export interface RequestProps {
   method: HttpMethod
   path: string
   body?: any
-  version?: string
   queryParams?: QueryParameterBag
 }
 
@@ -47,9 +46,9 @@ export async function request(props: RequestProps) {
 // ref: https://docs.amplify.aws/guides/functions/graphql-from-lambda/q/platform/js/#iam-authorization
 export async function requestUsingCustom(props: RequestProps) {
   try {
-    const { body = undefined, method, path, version = API_VERSION, queryParams = {} } = props
+    const { body = undefined, method, path, queryParams = {} } = props
     const requestBody = stringify(body)
-    const executeApiPath = `${API_HOST}/${version}/${path}`
+    const executeApiPath = `${API_HOST}/${path}`
     const executeApiEndpoint = new URL(executeApiPath)
     const encodedQueryParams = encodeProps(removeEmptyProps(queryParams))
     const queryString = queryParamsToUrlString(encodedQueryParams)
@@ -57,7 +56,7 @@ export async function requestUsingCustom(props: RequestProps) {
     logger.debug('Request path: ', requestPath)
 
     /*
-    const cloudFrontPath = `${PRODUCTION_APP_URL}/${version}/${path}`
+    const cloudFrontPath = `${PRODUCTION_APP_URL}/${path}`
     const cloudFrontEndpoint = new URL(cloudFrontPath)
 
     // For CloudFront reverse proxy to API Gateway with IAM auth, need to sign request as if it were being send to API Gateway
@@ -200,7 +199,7 @@ async function sendRequest(request: Request) {
 // ref: https://docs.amplify.aws/lib/restapi/fetch/q/platform/js/
 export async function requestUsingAmplify(props: RequestProps) {
   try {
-    const { body = undefined, method, path, version = API_VERSION, queryParams = {} } = props
+    const { body = undefined, method, path, queryParams = {} } = props
     const requestBody = stringify(body)
     const params = {
       body: requestBody,
@@ -209,7 +208,7 @@ export async function requestUsingAmplify(props: RequestProps) {
         //host: API_HOST,
       },
     }
-    const fullPath = `/${version}/${path}`
+    const fullPath = `/${path}`
     let response
     if (method === 'GET') {
       response = await API.get(apiName, fullPath, {
