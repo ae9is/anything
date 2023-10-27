@@ -1,5 +1,11 @@
 //import { fromCognitoIdentityPool } from '@aws-sdk/credential-providers'
-import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand, Credentials } from "@aws-sdk/client-cognito-identity"
+import {
+  CognitoIdentityClient,
+  GetIdCommand,
+  GetCredentialsForIdentityCommand,
+  Credentials,
+} from '@aws-sdk/client-cognito-identity'
+import { AwsCredentialIdentity } from '@smithy/types/dist-types/identity'
 import { Amplify, Auth } from 'aws-amplify'
 import { CognitoUser } from 'amazon-cognito-identity-js'
 import logger from 'logger'
@@ -40,7 +46,7 @@ export async function getUser(): Promise<CognitoUser | any> {
 
 export async function getUserAttr() {
   const defaultAttr = {
-    displayName: 'Guest'
+    displayName: 'Guest',
   }
   try {
     if (!Auth.currentAuthenticatedUser()) {
@@ -75,67 +81,93 @@ export async function getCredentialsForServices() {
   return Auth.currentCredentials().then((credentials) => Auth.essentialCredentials(credentials))
 }
 
-export async function getCredentialsForApi() {
-  let creds //: AwsCredentialIdentity | Provider<AwsCredentialIdentity>
+// Caches credentials, updating when expired
+export class ApiCredentials {
 
-  // Get authentication token from Amplify login
-  // ref: https://stackoverflow.com/questions/48777321
-  const session = await Auth.currentSession()
-  logger.debug('Session: ', session)
-  const idTokenJwt = session?.getIdToken()?.getJwtToken()
-
-  // Use Amplify token to retrieve credentials
-
-  // Ideally would simplify with fromCognitoIdentityPool() but the wrong credentials are retrieved
-  // ref: https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/loading-browser-credentials-cognito.html
-  // ref: https://stackoverflow.com/a/73024847
-//  const credProvider = fromCognitoIdentityPool({
-//    identityPoolId: IDENTITY_POOL_ID,
-//    accountId: AWS_ACCOUNT_ID,
-//    clientConfig: {
-//      region: AWS_REGION,
-//    },
-//    logins: {
-//      [COGNITO_ID]: idTokenJwt,
-//    },
-//  })
-//  const client = new CognitoIdentityClient({
-//    region: AWS_REGION,
-//    credentials: credProvider,
-//  })
-//  const creds = await client?.config?.credentials()
-
-  // Enhanced (simplified) authflow, manually calling low level API to retrieve correct credentials
-  // ref: https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html
-  const client = new CognitoIdentityClient({ region: AWS_REGION })
-  const getIdInput = {
-    AccountId: AWS_ACCOUNT_ID,
-    IdentityPoolId: IDENTITY_POOL_ID,
-    Logins: {
-      [COGNITO_ID]: idTokenJwt,
-    },
+  // Similar type to Credentials, but needed for SignatureV4
+  private _credentials: AwsCredentialIdentity = {
+    accessKeyId: '',
+    secretAccessKey: '',
+    sessionToken: undefined,
+    expiration: undefined,
   }
-  const getIdCommand = new GetIdCommand(getIdInput)
-  const getIdResp = await client.send(getIdCommand)
-  const identityId = getIdResp?.IdentityId
-  if (identityId) {
-    const getCredsInput = {
-      IdentityId: getIdResp?.IdentityId,
+
+  async getCredentials() {
+    let creds = this._credentials
+
+    // Get authentication token from Amplify login
+    // ref: https://stackoverflow.com/questions/48777321
+    const session = await Auth.currentSession()
+    logger.debug('Retrieving credentials for session: ', session)
+    const idTokenJwt = session?.getIdToken()?.getJwtToken()
+
+    // If we have a session and credentials that aren't expired, skip retrieving new credentials
+    if (idTokenJwt && creds?.expiration && creds.expiration > new Date()) {
+      logger.debug('Current credentials: ', creds)
+      logger.debug('Already have valid credentials, skipping ...')
+      return creds
+    }
+
+    // Use Amplify token to retrieve credentials
+
+    // Ideally would simplify with fromCognitoIdentityPool() but the wrong credentials are retrieved
+    // ref: https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/loading-browser-credentials-cognito.html
+    // ref: https://stackoverflow.com/a/73024847
+    //  const credProvider = fromCognitoIdentityPool({
+    //    identityPoolId: IDENTITY_POOL_ID,
+    //    accountId: AWS_ACCOUNT_ID,
+    //    clientConfig: {
+    //      region: AWS_REGION,
+    //    },
+    //    logins: {
+    //      [COGNITO_ID]: idTokenJwt,
+    //    },
+    //  })
+    //  const client = new CognitoIdentityClient({
+    //    region: AWS_REGION,
+    //    credentials: credProvider,
+    //  })
+    //  const creds = await client?.config?.credentials()
+
+    // Enhanced (simplified) authflow, manually calling low level API to retrieve correct credentials
+    // ref: https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html
+    const client = new CognitoIdentityClient({ region: AWS_REGION })
+    const getIdInput = {
+      AccountId: AWS_ACCOUNT_ID,
+      IdentityPoolId: IDENTITY_POOL_ID,
       Logins: {
         [COGNITO_ID]: idTokenJwt,
       },
     }
-    const getCredsCmd = new GetCredentialsForIdentityCommand(getCredsInput)
-    const getCredsResp = await client.send(getCredsCmd)
-    const credentials: Credentials | undefined = getCredsResp?.Credentials
-    creds = {
-      accessKeyId: credentials?.AccessKeyId ?? '',
-      secretAccessKey: credentials?.SecretKey ?? '',
-      sessionToken: credentials?.SessionToken,
-      expiration: credentials?.Expiration,
+    const getIdCommand = new GetIdCommand(getIdInput)
+    const getIdResp = await client.send(getIdCommand)
+    const identityId = getIdResp?.IdentityId
+    if (identityId) {
+      const getCredsInput = {
+        IdentityId: getIdResp?.IdentityId,
+        Logins: {
+          [COGNITO_ID]: idTokenJwt,
+        },
+      }
+      const getCredsCmd = new GetCredentialsForIdentityCommand(getCredsInput)
+      const getCredsResp = await client.send(getCredsCmd)
+      const credentials: Credentials | undefined = getCredsResp?.Credentials
+      creds = {
+        accessKeyId: credentials?.AccessKeyId ?? '',
+        secretAccessKey: credentials?.SecretKey ?? '',
+        sessionToken: credentials?.SessionToken,
+        expiration: credentials?.Expiration,
+      }
     }
-  }
 
-  logger.debug('Creds: ', creds)
-  return creds
+    logger.debug('Retrieved credentials: ', creds)
+    this._credentials = creds
+    return creds
+  }
+}
+
+const apiCreds = new ApiCredentials()
+
+export async function getCredentialsForApi() {
+  return apiCreds.getCredentials()
 }
