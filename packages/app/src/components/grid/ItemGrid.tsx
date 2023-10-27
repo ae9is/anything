@@ -18,15 +18,25 @@ export function ItemGrid({
   const query = queries.listItemsByCollection
   const queryOpts = {
     id: loadCollection ? collection : undefined,
+    queryParams: {
+      asc: true,
+      startKey: undefined,
+      limit: 10,
+    },
   }
   const fallback = queries.listItemsByTypeAndFilter
   const fallbackOpts = {
     id: type,
     queryParams: {
-      sortKeyExpression: filter?.sortKeyExpression,
-      filterExpression: filter?.filterExpression,
-      attributeNames: stringify(filter?.attributeNames),
-      attributeValues: stringify(filter?.attributeValues),
+      asc: true,
+      startKey: undefined,
+      limit: 10,
+    },
+    body: {
+      sortKeyExpression: defaultFilter.sortKeyExpression,
+      filterExpression: defaultFilter.filterExpression,
+      attributeNames: defaultFilter.attributeNames,
+      attributeValues: defaultFilter.attributeValues,
     },
   }
 

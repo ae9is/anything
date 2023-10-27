@@ -3,7 +3,8 @@ listItemsByTypeAndFilter:
   events:
     - http:
         path: /types/{id}/items
-        method: get
+        #method: get
+        method: post
         authorizer:
           type: aws_iam
 listItemsByTypeAndFilterOptions:

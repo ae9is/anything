@@ -1,8 +1,16 @@
 import { APIGatewayProxyEventQueryStringParameters, APIGatewayProxyEventV2 } from 'aws-lambda'
-import { Filter, parse } from 'utils'
 import logger from 'logger'
 import { middyfy } from '../../lib/middy'
-import { changeBatch, changeById, deleteById, getById, getByIdAndQuery, getPaginationParamsFromQuery } from '../../lib/routing'
+import {
+  changeBatch,
+  changeById,
+  deleteById,
+  getById,
+  getByIdAndQuery,
+  getByIdAndQueryAndBody,
+  getFilterParamsFromProps,
+  getPaginationParamsFromQuery,
+} from '../../lib/routing'
 import { batchWriteFromJson, putItem, queryItemVersions } from '../../store/store'
 import {
   deleteItem as deleteItm,
@@ -24,7 +32,10 @@ export const itemVersionsById = middyfy(async (event: APIGatewayProxyEventV2) =>
   return getByIdAndQuery(event, resolveItemVersionsById)
 })
 
-async function resolveItemVersionsById(id: string, query?: APIGatewayProxyEventQueryStringParameters) {
+async function resolveItemVersionsById(
+  id: string,
+  query?: APIGatewayProxyEventQueryStringParameters
+) {
   const { startKey, limit, asc } = getPaginationParamsFromQuery(query)
   return queryItemVersions(id, startKey, limit, asc)
 }
@@ -39,23 +50,18 @@ async function resolveItemsByCollection(id: string) {
 
 export const itemsByTypeAndFilter = middyfy(async (event: APIGatewayProxyEventV2) => {
   logger.debug('Handling itemsByTypeAndFilter...')
-  return getByIdAndQuery(event, resolveItemsByTypeAndFilter)
+  return getByIdAndQueryAndBody(event, resolveItemsByTypeAndFilter)
 })
 
-async function resolveItemsByTypeAndFilter(type: string, query?: APIGatewayProxyEventQueryStringParameters) {
+async function resolveItemsByTypeAndFilter(
+  type: string,
+  query?: APIGatewayProxyEventQueryStringParameters,
+  body?: any
+) {
   logger.debug('Resolving resolveItemsByTypeAndFilter...')
-  const attributeNames = query?.attributeNames ? parse(query?.attributeNames) : undefined
-  logger.debug('attribute names: ', attributeNames)
-  const attributeValues = query?.attributeValues ? parse(query?.attributeValues) : undefined
-  logger.debug('attribute values: ', attributeNames)
-  const filter: Filter = {
-    sortKeyExpression: query?.sortKeyExpression,
-    filterExpression: query?.filterExpression,
-    attributeNames,
-    attributeValues,
-  }
-  logger.debug('sort key expression: ', filter?.sortKeyExpression)
-  logger.debug('filter expression: ', filter?.filterExpression)
+  const filterFromQuery = getFilterParamsFromProps(query)
+  const filterFromBody = getFilterParamsFromProps(body)
+  const filter = { ...filterFromQuery, ...filterFromBody }
   const { startKey, limit, asc } = getPaginationParamsFromQuery(query)
   return getItemsByTypeAndFilter(type, filter, startKey, limit, asc)
 }

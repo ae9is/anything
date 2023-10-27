@@ -8,23 +8,22 @@ import { queries, useQuery } from '../../../data'
 export default function Page() {
   const query = queries.listItemsByTypeAndFilter
   const opts = {
-    id: 'type1',
+    id: 'type2',
     queryParams: {
-      // TODO FIXME Any string parameter throws 403 forbidden by api gateway
-      sortKeyExpression: defaultFilter.sortKeyExpression,
-      filterExpression: defaultFilter.filterExpression,
-      attributeNames: stringify(defaultFilter.attributeNames),
-      attributeValues: stringify(defaultFilter.attributeValues),
-      // No sort params works fine
-      /*
-      sortKeyExpression: undefined,
-      filterExpression: undefined,
-      attributeNames: undefined,
-      attributeValues: undefined,
-      */
+      // Note: with HTTP APIs, setting string query parameters results in 403 Forbidden 
+      //  when secured with IAM auth (request signing mismatch).
+      //  Boolean and number query parameters are OK.
+      //  Simple string query parameters can be used with REST APIs with IAM.
+      //  More complicated string query params need to be POSTed to an endpoint.
       asc: true,
       startKey: undefined,
       limit: 10,
+    },
+    body: {
+      sortKeyExpression: defaultFilter.sortKeyExpression,
+      filterExpression: defaultFilter.filterExpression,
+      attributeNames: defaultFilter.attributeNames,
+      attributeValues: defaultFilter.attributeValues,
     },
   }
   const { data, error, isLoading } = useQuery(query, opts)
