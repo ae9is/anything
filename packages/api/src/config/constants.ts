@@ -1,3 +1,4 @@
+export const SERVICE_NAME = 'anything'
 export const NODE_ENV = process.env.NODE_ENV || 'development'
 export const IS_OFFLINE = NODE_ENV === 'development' && (process.env.IS_OFFLINE || false)
 export const STAGE = process.env.STAGE || 'dev'
