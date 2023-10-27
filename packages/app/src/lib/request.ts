@@ -3,6 +3,7 @@ import { HttpRequest } from '@aws-sdk/protocol-http'
 import { Sha256 } from '@aws-crypto/sha256-browser'
 import { Amplify, API } from 'aws-amplify'
 import { StatusCodes } from 'http-status-codes'
+import axios from 'axios'
 
 import awsExports, { apiName} from '../config/amplify'
 Amplify.configure(awsExports)
@@ -44,7 +45,7 @@ export async function request(props: RequestProps) {
 // Sign and send requests to HTTP gateway using AWS signature v4.
 // ref: https://stackoverflow.com/a/74645332
 // ref: https://docs.amplify.aws/guides/functions/graphql-from-lambda/q/platform/js/#iam-authorization
-export async function requestUsingCustom(props: RequestProps) {
+export async function requestUsingCustom(props: RequestProps, useAxios = false) {
   try {
     const { body = undefined, method, path, queryParams = {} } = props
     const requestBody = stringify(body)
@@ -70,7 +71,7 @@ export async function requestUsingCustom(props: RequestProps) {
       'Content-Type': 'application/json',
     }
     const requestToBeSigned = new HttpRequest({
-      method: method,
+      method: method.toUpperCase(),
       headers: {
         ...contentTypeHeader,
         // Modifying host header is forbidden in browsers and this will be stripped from the request,
@@ -85,7 +86,6 @@ export async function requestUsingCustom(props: RequestProps) {
     logger.debug('Request pre-sign: ', requestToBeSigned)
     const signedRequest: HttpRequest = await signRequest(requestToBeSigned) as HttpRequest
     logger.debug('Request post-sign: ', signedRequest)
-    //const response = await sendRequestAxios(fullPath, signedRequest)
     const headerBag = signedRequest?.headers
     logger.debug('Request post-sign headers: ', headerBag)
     const headers: [string, string][] = Object.entries(headerBag)?.map(([key, val]) => [key, val])
@@ -105,7 +105,12 @@ export async function requestUsingCustom(props: RequestProps) {
     request?.headers?.forEach((value, key) => {
       logger.debug(`${key}: ${value}\n`)
     })
-    const response = await sendRequest(request)
+    let response
+    if (useAxios) {
+      response = await sendRequestAxios(requestPath, signedRequest)
+    } else {
+      response = await sendRequest(request)
+    }
     return response
   } catch (e) {
     logger.error(e)
@@ -134,16 +139,15 @@ async function signRequest(request: HttpRequest) {
   return signedRequest
 }
 
-/*
-async function sendRequestAxios(fullPath: string, request: HttpRequest) {
+async function sendRequestAxios(url: string, request: HttpRequest) {
   let statusCode = 200
   let responseBody
   let statusText
   try {
-    logger.debug('Fetching request ...')
+    logger.debug('Fetching request using axios ...')
     const response = await axios({
       ...request,
-      url: fullPath,
+      url,
       params: request?.query,
     })
     responseBody = response?.data
@@ -172,14 +176,13 @@ async function sendRequestAxios(fullPath: string, request: HttpRequest) {
     statusText: statusText,
   }
 }
-*/
 
 async function sendRequest(request: Request) {
   let status = StatusCodes.OK
   let responseBody
   let statusText
   try {
-    logger.debug('Fetching request ...')
+    logger.debug('Fetching request using fetch ...')
     const response = await fetch(request)
     status = response.status
     statusText = response.statusText
