@@ -138,7 +138,9 @@ Resources:
                   - "execute-api:Invoke"
                 Resource:
                 - '${param:apiRootArn}/*/GET/healthz'
+                - '${param:apiRootArn}/*/GET/types'
                 - '${param:apiRootArn}/*/GET/types/*'
+                - '${param:apiRootArn}/*/POST/types/*'
                 - '${param:apiRootArn}/*/GET/items/*'
                 - '${param:apiRootArn}/*/GET/collections/*'
 
@@ -187,6 +189,7 @@ Resources:
                 #
                 # General ARN format: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
                 - '${param:apiRootArn}/*/GET/healthz'
+                - '${param:apiRootArn}/*/GET/types'
                 - '${param:apiRootArn}/*/GET/types/*'
                 - '${param:apiRootArn}/*/GET/items/*'
                 - '${param:apiRootArn}/*/GET/collections/*'
