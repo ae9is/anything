@@ -9,7 +9,7 @@ export default function Page() {
   const { data, error, isLoading } = useQuery(query)
   logger.debug('healthz data:', data)
   let healthz = 'error'
-  if (data) {
+  if (data === true) {
     healthz = 'true'
   } else if (data === false) {
     healthz = 'false'
