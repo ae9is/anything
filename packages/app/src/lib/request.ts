@@ -3,7 +3,8 @@ import { HttpRequest } from '@aws-sdk/protocol-http'
 import { Sha256 } from '@aws-crypto/sha256-browser'
 import { Amplify, API } from 'aws-amplify'
 import { StatusCodes } from 'http-status-codes'
-import axios from 'axios'
+import crypto, { BinaryToTextEncoding } from 'crypto'
+import aws4 from 'aws4'
 
 import awsExports, { apiName} from '../config/amplify'
 Amplify.configure(awsExports)
@@ -13,7 +14,14 @@ import { stringify } from 'utils'
 import { AWS_REGION, API_HOST, PRODUCTION_APP_URL } from '../config'
 import { getCredentialsForApi } from './auth'
 import { encodeProps, removeEmptyProps } from './props'
-//import axios from 'axios'
+
+const BODY_HASH_HEADER = 'X-Amz-Content-Sha256'
+const AUTH_HEADERS = [
+  'Authorization',
+  'X-Amz-Date',
+  'X-Amz-Security-Token',
+  BODY_HASH_HEADER,
+]
 
 export type HttpMethod =
   | 'GET'
@@ -36,6 +44,7 @@ export interface RequestProps {
   path: string
   body?: any
   queryParams?: QueryParameterBag
+  useAws4?: boolean // An alternative to SignatureV4 for signing requests
 }
 
 export async function request(props: RequestProps) {
@@ -45,15 +54,18 @@ export async function request(props: RequestProps) {
 // Sign and send requests to HTTP gateway using AWS signature v4.
 // ref: https://stackoverflow.com/a/74645332
 // ref: https://docs.amplify.aws/guides/functions/graphql-from-lambda/q/platform/js/#iam-authorization
-export async function requestUsingCustom(props: RequestProps, useAxios = false) {
+export async function requestUsingCustom(props: RequestProps) {
   try {
-    const { body = undefined, method, path, queryParams = {} } = props
+    const { body = undefined, method, path, queryParams = {}, useAws4 = false } = props
     const requestBody = stringify(body)
     const executeApiPath = `${API_HOST}/${path}`
     const executeApiEndpoint = new URL(executeApiPath)
     const encodedQueryParams = encodeProps(removeEmptyProps(queryParams))
     const queryString = queryParamsToUrlString(encodedQueryParams)
-    const requestPath = `${executeApiPath}${queryString}`
+    const requestUrl = `${executeApiPath}${queryString}`
+    const requestPath = `${executeApiEndpoint.pathname}${queryString}`
+    logger.debug('Execute api endpoint host: ', executeApiEndpoint.host)
+    logger.debug('Request url: ', requestUrl)
     logger.debug('Request path: ', requestPath)
 
     /*
@@ -70,34 +82,57 @@ export async function requestUsingCustom(props: RequestProps, useAxios = false) 
     const contentTypeHeader: {} | { 'Content-Type': string } = (method === 'GET' || method === 'HEAD') ? {} : {
       'Content-Type': 'application/json',
     }
-    const requestToBeSigned = new HttpRequest({
-      method: method.toUpperCase(),
-      headers: {
-        ...contentTypeHeader,
-        // Modifying host header is forbidden in browsers and this will be stripped from the request,
-        //  but we need to set here just for the authorization header
+    const bodyHash = requestBody && getBodyHash(requestBody)
+    logger.debug('Request body hash: ', bodyHash)
+    const bodyHashHeader: {} | { [BODY_HASH_HEADER]: string } = bodyHash ? {
+      [BODY_HASH_HEADER]: bodyHash,
+    } : {}
+    const presignHeaders = {
+      ...contentTypeHeader,
+      ...bodyHashHeader,
+      // Modifying host header is forbidden in browsers and this will be stripped from the request,
+      //  but we need to set here just for the authorization header
+      host: executeApiEndpoint.host,
+    }
+    let signedRequest
+    if (useAws4) {
+      const requestToBeSigned = {
+        method: method.toUpperCase(),
+        headers: presignHeaders,
         host: executeApiEndpoint.host,
-      },
-      hostname: executeApiEndpoint.host,
-      body: requestBody,
-      path: executeApiEndpoint.pathname,
-      query: encodedQueryParams,
-    })
-    logger.debug('Request pre-sign: ', requestToBeSigned)
-    const signedRequest: HttpRequest = await signRequest(requestToBeSigned) as HttpRequest
+        body: requestBody,
+        // For aws4.sign(), path should be the full path including query string.
+        path: requestPath,
+      }
+      logger.debug('Request pre-sign: ', requestToBeSigned)
+      signedRequest = await signRequestAws4(requestToBeSigned)
+    } else {
+      const requestToBeSigned = new HttpRequest({
+        method: method.toUpperCase(),
+        protocol: 'https',
+        hostname: executeApiEndpoint.host,
+        // For SignatureV4.sign(HttpRequest), path should be the path excluding query string.
+        path: executeApiEndpoint.pathname,
+        query: encodedQueryParams,
+        headers: presignHeaders,
+        body: requestBody,
+      })
+      logger.debug('Request pre-sign: ', requestToBeSigned)
+      signedRequest = await signRequestSignatureV4(requestToBeSigned) as HttpRequest
+    }
     logger.debug('Request post-sign: ', signedRequest)
-    const headerBag = signedRequest?.headers
-    logger.debug('Request post-sign headers: ', headerBag)
-    const headers: [string, string][] = Object.entries(headerBag)?.map(([key, val]) => [key, val])
-    logger.debug('Request headers: ', headers)
-    logger.debug('Request query: ', signedRequest?.query)
-    const requestQueryParams = Object.entries(signedRequest?.query)?.map(([key, val]) => [key, val])
-    logger.debug('Request query params: ', requestQueryParams)
+    const signedHeaders = signedRequest?.headers
+    logger.debug('Request post-sign headers: ', signedHeaders)
+    const fetchHeaders: HeadersInit = Object.entries(signedHeaders as any)?.map(([key, val]: [key: string, val?: any]) => [key, val])
+    logger.debug('Request headers: ', fetchHeaders)
+    //logger.debug('Request query: ', signedRequest?.query)
+    //const requestQueryParams = Object.entries(signedRequest?.query)?.map(([key, val]) => [key, val])
+    //logger.debug('Request query params: ', requestQueryParams)
     //const request = new Request(cloudFrontPath, { // CloudFront proxying API Gateway using IAM auth only works with custom domain
     // ref: https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options
-    const request = new Request(requestPath, {
+    const request = new Request(requestUrl, {
       ...signedRequest, 
-      headers: new Headers(headers),
+      headers: new Headers(fetchHeaders),
       credentials: 'include',
     })
     logger.debug('Request Request: ', request)
@@ -105,17 +140,22 @@ export async function requestUsingCustom(props: RequestProps, useAxios = false) 
     request?.headers?.forEach((value, key) => {
       logger.debug(`${key}: ${value}\n`)
     })
-    let response
-    if (useAxios) {
-      response = await sendRequestAxios(requestPath, signedRequest)
-    } else {
-      response = await sendRequest(request)
-    }
+    const response = await sendRequest(request)
     return response
   } catch (e) {
     logger.error(e)
     throw e
   }
+}
+
+// ref: https://github.com/postmanlabs/postman-runtime/blob/develop/lib/authorizer/aws4.js
+function getBodyHash(body: string, algorithm = 'sha256', digestEncoding: BinaryToTextEncoding = 'hex') {
+  if (!body) {
+    return
+  }
+  const hash = crypto.createHash(algorithm)
+  hash.update(body)
+  return hash.digest(digestEncoding)
 }
 
 function queryParamsToUrlString(queryParams: any) {
@@ -124,7 +164,7 @@ function queryParamsToUrlString(queryParams: any) {
   return queryString
 }
 
-async function signRequest(request: HttpRequest) {
+async function signRequestSignatureV4(request: HttpRequest) {
   const credentials = await getCredentialsForApi()
   if (!credentials) {
     throw new Error('Could not get credentials')
@@ -139,42 +179,28 @@ async function signRequest(request: HttpRequest) {
   return signedRequest
 }
 
-async function sendRequestAxios(url: string, request: HttpRequest) {
-  let statusCode = 200
-  let responseBody
-  let statusText
-  try {
-    logger.debug('Fetching request using axios ...')
-    const response = await axios({
-      ...request,
-      url,
-      params: request?.query,
-    })
-    responseBody = response?.data
-    statusCode = response?.status
-    statusText = response?.statusText
-  } catch (error: any) {
-    statusCode = 500
-    if (error.response) {
-      responseBody = {
-        errors: [
-          {
-            message: error.response?.data || error,
-          },
-        ],
-      }
-      statusCode = error.response?.status ?? 500
-    } else if (error.request) {
-      logger.error('Request error: ', error?.request)
-    } else {
-      logger.error('Axios error: ', error?.message)
-    }
+async function signRequestAws4(request: aws4.Request) {
+  const credentials = await getCredentialsForApi()
+  if (!credentials) {
+    throw new Error('Could not get credentials')
   }
-  return {
-    data: responseBody,
-    status: statusCode,
-    statusText: statusText,
+  const aws4Credentials: aws4.Credentials = {
+    accessKeyId: credentials.accessKeyId,
+    secretAccessKey: credentials.secretAccessKey,
+    sessionToken: credentials.sessionToken || undefined,
   }
+  const aws4Request: aws4.Request = {
+    host: request.host,
+    path: request.path,
+    service: 'execute-api',
+    region: AWS_REGION,
+    method: request.method,
+    body: request.body,
+    headers: request.headers,
+    signQuery: false,
+  }
+  const signedRequest = aws4.sign(aws4Request, aws4Credentials)
+  return signedRequest
 }
 
 async function sendRequest(request: Request) {
