@@ -40,7 +40,7 @@ export default function Page() {
     )
   }
 
-  const path = '/' + query.path('')
+  const path = '/' + query.path(opts.id)
   const method = query.method
 
   return (
