@@ -140,9 +140,10 @@ Resources:
                 - '${param:apiRootArn}/*/GET/healthz'
                 - '${param:apiRootArn}/*/GET/types'
                 - '${param:apiRootArn}/*/GET/types/*'
-                - '${param:apiRootArn}/*/POST/types/*'
                 - '${param:apiRootArn}/*/GET/items/*'
                 - '${param:apiRootArn}/*/GET/collections/*'
+                # (Need to post filter query parameters when searching items by type)
+                - '${param:apiRootArn}/*/POST/types/*'
 
   WriteRole:
     Type: AWS::IAM::Role
@@ -194,6 +195,7 @@ Resources:
                 - '${param:apiRootArn}/*/GET/items/*'
                 - '${param:apiRootArn}/*/GET/collections/*'
                 - '${param:apiRootArn}/*/POST/types/*'
+                - '${param:apiRootArn}/*/POST/items'
                 - '${param:apiRootArn}/*/POST/items/*'
                 - '${param:apiRootArn}/*/PUT/collections/*'
                 - '${param:apiRootArn}/*/DELETE/items/*'
