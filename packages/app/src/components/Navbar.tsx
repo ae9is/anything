@@ -14,7 +14,9 @@ export function Navbar() {
   const links = [
     //
     'View',
-    'Import'
+    'Import',
+    'Healthz',
+    'Test'
   ]
   function navbarLinks(modal?: boolean) {
     return (
@@ -54,6 +56,10 @@ export function Navbar() {
       anything
     </Link>
   )
+
+  async function handleSignOut() {
+    await signOut()
+  }
 
   return (
     <nav className="flex-no-wrap relative flex w-full items-center justify-between bg-base-100 py-2 shadow-md shadow-black/5 lg:flex-wrap lg:justify-start">
@@ -123,7 +129,7 @@ export function Navbar() {
                 <p>Logged in as {userAttr?.displayName || 'Guest'}</p>
               </li>
               <li>
-                <Link noUnderline onClick={signOut} href="/">
+                <Link noUnderline onClick={handleSignOut} href="/">
                   Sign out
                 </Link>
               </li>

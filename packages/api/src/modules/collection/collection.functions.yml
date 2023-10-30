@@ -1,48 +1,72 @@
 listCollections:
   handler: src/modules/collection/collection_handler.collectionsByType
   events:
-    - httpApi:
-        path: /v1/types/{id}/collections
+    - http:
+        path: /types/{id}/collections
         method: get
         authorizer:
           type: aws_iam
+listCollectionsOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - http:
+        path: /types/{id}/collections
+        method: options
 getCollection:
   handler: src/modules/collection/collection_handler.collectionById
   events:
-    - httpApi:
-        path: /v1/collections/{id}
+    - http:
+        path: /collections/{id}
         method: get
         authorizer:
           type: aws_iam
+getCollectionOptions: # also putCollectionOptions, deleteCollectionOptions
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - http:
+        path: /collections/{id}
+        method: options
 putCollection:
   handler: src/modules/collection/collection_handler.upsertCollection
   events:
-    - httpApi:
-        path: /v1/collections/{id}
+    - http:
+        path: /collections/{id}
         method: put
         authorizer:
           type: aws_iam
 deleteCollection:
   handler: src/modules/collection/collection_handler.deleteCollection
   events:
-    - httpApi:
-        path: /v1/collections/{id}
+    - http:
+        path: /collections/{id}
         method: delete
         authorizer:
           type: aws_iam
 addItemsToCollection:
   handler: src/modules/collection/collection_handler.addItemsToCollection
   events:
-    - httpApi:
-        path: /v1/collections/{id}/items/add
+    - http:
+        path: /collections/{id}/items/add
         method: put
         authorizer:
           type: aws_iam
+addItemsToCollectionOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - http:
+        path: /collections/{id}/items/add
+        method: options
 removeItemsFromCollection:
   handler: src/modules/collection/collection_handler.removeItemsFromCollection
   events:
-    - httpApi:
-        path: /v1/collections/{id}/items/remove
+    - http:
+        path: /collections/{id}/items/remove
         method: put
         authorizer:
           type: aws_iam
+removeItemsFromCollectionOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - http:
+        path: /collections/{id}/items/remove
+        method: options

@@ -1,13 +1,12 @@
 // prettier-ignore
 'use client'
 
-import { useEffect, useState } from 'react'
+import { createContext, useEffect, useState } from 'react'
 import { Amplify, Hub } from 'aws-amplify'
+import logger from 'logger'
+import { getUser, getUserAttr } from '../../lib/auth'
 import awsExports from '../../config/amplify'
 Amplify.configure(awsExports)
-
-import { getUser, getUserAttr } from '../../lib/auth'
-import { createContext } from 'react'
 
 export const UserContext = createContext<any>(null)
 export const UserAttrContext = createContext<any>(null)
@@ -35,7 +34,7 @@ export function AuthProvider(props: ProviderProps) {
           break
         case 'signIn_failure':
         case 'cognitoHostedUI_failure':
-          console.log('Sign in failure', data)
+          logger.error('Sign in failure', data)
           break
       }
     })

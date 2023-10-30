@@ -1,9 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env.*local", "**/.env"],
-  "globalEnv": [],
+  "globalEnv": ["CHECK_BUNDLE_SIZE"],
   "pipeline": {
     "build": {
+      "env": ["CHECK_BUNDLE_SIZE"],
       "outputs": [
         "dist/**",
         ".next/**",

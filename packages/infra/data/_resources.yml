@@ -1,0 +1,103 @@
+Resources:
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ${self:provider.environment.NAMESPACE}-data
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: 'AES256'
+      LoggingConfiguration:
+        DestinationBucketName: ${param:loggingBucket}
+        LogFilePrefix: s3-data-logs
+#        VersioningConfiguration:
+#          Status: Enabled
+
+  Stream:
+    Type: AWS::Kinesis::Stream
+    Properties: 
+      Name: ${self:provider.environment.NAMESPACE}-stream
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: alias/aws/kinesis
+      StreamModeDetails:
+        StreamMode: ON_DEMAND
+
+  DeliveryStreamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref 'AWS::AccountId'
+
+  # To add permissions to use customer management keys refer to:
+  #  https://docs.aws.amazon.com/firehose/latest/dev/controlling-access.html#using-iam-s3
+  DeliveryStreamPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Allow reading data stream and read/write to data bucket
+      Roles: 
+        - !Ref DeliveryStreamRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'kinesis:Get*'
+              - 'kinesis:DescribeStream*'
+              - 'kinesis:List*'
+            Resource: !GetAtt Stream.Arn
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:GetBucketLocation'
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:PutObject'
+            Resource:
+              - !GetAtt DataBucket.Arn
+              - !Sub ${DataBucket.Arn}/*
+
+  # ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-kinesisfirehose-deliverystream.html
+  DeliveryStream: 
+    Type: AWS::KinesisFirehose::DeliveryStream
+    DependsOn:
+      - DeliveryStreamPolicy
+    Properties: 
+      DeliveryStreamName: ${self:provider.environment.NAMESPACE}-delivery-stream
+      DeliveryStreamType: KinesisStreamAsSource
+      KinesisStreamSourceConfiguration: 
+        KinesisStreamARN: !GetAtt Stream.Arn
+        RoleARN: !GetAtt DeliveryStreamRole.Arn
+      ExtendedS3DestinationConfiguration: 
+        BucketARN: !GetAtt DataBucket.Arn
+        BufferingHints: 
+          SizeInMBs: 128
+          IntervalInSeconds: 900
+        # Athena compression support: https://docs.aws.amazon.com/athena/latest/ug/compression-formats.html
+        # Firehose allowed values: GZIP | HADOOP_SNAPPY | Snappy | UNCOMPRESSED | ZIP
+        # Ideally would use zstd since Athena supports it, but Firehose does not.
+        # (Hadoop) Snappy is similar in speed to zstd but worse compression than zstd/gzip,
+        #  and billing for Firehose and Athena is by data size.
+        CompressionFormat: GZIP
+        RoleARN: !GetAtt DeliveryStreamRole.Arn
+
+Outputs:
+  stream:
+    Value: !Ref Stream
+  streamArn:
+    Value: !GetAtt Stream.Arn

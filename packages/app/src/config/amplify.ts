@@ -19,7 +19,7 @@ const awsExports = {
     region: AWS_REGION,
     userPoolId: USER_POOL_ID,
     userPoolWebClientId: USER_POOL_WEB_CLIENT_ID, // Amazon Cognito Web Client ID (26-char alphanumeric string)
-    mandatorySignIn: false, // true, // Enforce user authentication prior to accessing AWS resources or not
+    mandatorySignIn: true, // Enforce user authentication prior to accessing AWS resources or not
     oauth: {
       domain: OAUTH_DOMAIN,
       scope: [

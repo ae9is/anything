@@ -1,7 +1,16 @@
-import { APIGatewayProxyEventV2 } from 'aws-lambda'
-import { Filter, parse } from 'utils'
+import { APIGatewayProxyEventQueryStringParameters, APIGatewayProxyEventV2 } from 'aws-lambda'
+import logger from 'logger'
 import { middyfy } from '../../lib/middy'
-import { changeBatch, changeById, deleteById, getById, getByIdAndQuery } from '../../lib/routing'
+import {
+  changeBatch,
+  changeById,
+  deleteById,
+  getById,
+  getByIdAndQuery,
+  getByIdAndQueryAndBody,
+  getFilterParamsFromProps,
+  getPaginationParamsFromQuery,
+} from '../../lib/routing'
 import { batchWriteFromJson, putItem, queryItemVersions } from '../../store/store'
 import {
   deleteItem as deleteItm,
@@ -23,10 +32,11 @@ export const itemVersionsById = middyfy(async (event: APIGatewayProxyEventV2) =>
   return getByIdAndQuery(event, resolveItemVersionsById)
 })
 
-async function resolveItemVersionsById(id: string, query: any) {
-  const startKey = query?.startKey
-  const limit = query?.limit
-  const asc = query?.asc
+async function resolveItemVersionsById(
+  id: string,
+  query?: APIGatewayProxyEventQueryStringParameters
+) {
+  const { startKey, limit, asc } = getPaginationParamsFromQuery(query)
   return queryItemVersions(id, startKey, limit, asc)
 }
 
@@ -39,21 +49,20 @@ async function resolveItemsByCollection(id: string) {
 }
 
 export const itemsByTypeAndFilter = middyfy(async (event: APIGatewayProxyEventV2) => {
-  return getByIdAndQuery(event, resolveItemsByTypeAndFilter)
+  logger.debug('Handling itemsByTypeAndFilter...')
+  return getByIdAndQueryAndBody(event, resolveItemsByTypeAndFilter)
 })
 
-async function resolveItemsByTypeAndFilter(type: string, query: any) {
-  const attributeNames = query?.attributeNames ? parse(query?.attributeNames) : undefined
-  const attributeValues = query?.attributeValues ? parse(query?.attributeValues) : undefined
-  const filter: Filter = {
-    sortKeyExpression: query?.sortKeyExpression,
-    filterExpression: query?.filterExpression,
-    attributeNames,
-    attributeValues,
-  }
-  const startKey = query?.startKey
-  const limit = query?.limit
-  const asc = query?.asc
+async function resolveItemsByTypeAndFilter(
+  type: string,
+  query?: APIGatewayProxyEventQueryStringParameters,
+  body?: any
+) {
+  logger.debug('Resolving resolveItemsByTypeAndFilter...')
+  const filterFromQuery = getFilterParamsFromProps(query)
+  const filterFromBody = getFilterParamsFromProps(body)
+  const filter = { ...filterFromQuery, ...filterFromBody }
+  const { startKey, limit, asc } = getPaginationParamsFromQuery(query)
   return getItemsByTypeAndFilter(type, filter, startKey, limit, asc)
 }
 

@@ -70,7 +70,7 @@ export const getItemsByTypeAndFilter = async (
   filter?: Filter,
   startKey?: any,
   limit = 50,
-  ascendingSortKey = false
+  ascendingSortKey = true
 ) => {
   return queryByTypeAndFilter(type, filter, startKey, gsi1, gsi1Id, limit, ascendingSortKey)
 }

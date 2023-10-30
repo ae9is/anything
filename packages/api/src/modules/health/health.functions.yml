@@ -1,8 +1,14 @@
 healthz:
   handler: src/modules/health/health_handler.healthz
   events:
-    - httpApi:
-        path: /v1/healthz
+    - http:
+        path: /healthz
         method: get
         authorizer:
           type: aws_iam
+healthzOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - http:
+        path: /healthz
+        method: options

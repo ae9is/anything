@@ -2,7 +2,7 @@
 'use client'
 
 import useSWR, { mutate } from 'swr'
-import { QueryParameterBag, RequestProps, requestUsingAmplify } from '../lib/request'
+import { QueryParameterBag, RequestProps, request } from '../lib/request'
 import { Query } from './queries'
 import useSWRMutation from 'swr/mutation'
 import logger from 'logger'
@@ -15,6 +15,7 @@ export interface QueryOptions {
 
 export function useQuery(query: Query, options?: QueryOptions) {
   const key = getRequestKeyFromQuery(query, options)
+  logger.debug('Using query with key: ', key)
   // ref: https://swr.vercel.app/docs/arguments#passing-objects
   return useSWR(key, (key) => requester(key))
 }
@@ -81,7 +82,7 @@ function getRequestKeyFromQuery(query: Query, options?: QueryOptions) {
 type RequesterProps = Omit<RequestProps, 'version'>
 
 export async function requester(props: RequesterProps) {
-  const response = await requestUsingAmplify(props)
+  const response = await request(props)
   // ref: https://github.com/axios/axios#response-schema
   const { data, status, statusText } = response
   if (status && (status < 200 || status >= 300)) {

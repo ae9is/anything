@@ -36,7 +36,8 @@ export const queries: Record<string, Query> = {
   },
   listItemsByTypeAndFilter: {
     path: (id: string) => `types/${id}/items`,
-    method: 'GET',
+    //method: 'GET',
+    method: 'POST',
   },
   listItemsByCollection: {
     path: (id: string) => `collections/${id}/items`,
@@ -61,5 +62,9 @@ export const queries: Record<string, Query> = {
   deleteItem: {
     path: (id: string) => `items/${id}`,
     method: 'DELETE',
+  },
+  healthz: {
+    path: () => `healthz`,
+    method: 'GET',
   },
 }

@@ -8,12 +8,12 @@ import { signIn } from '../../lib/auth'
 import { Footer } from '../../components'
 import { UserContext } from './provider'
 
-// ref: https://docs.amplify.aws/lib/auth/social/q/platform/js/#redirect-urls
+// ref: https://docs.amplify.aws/lib/auth/social/q/platform/js/#full-sample
 export function AuthForm() {
   const user = useContext(UserContext)
 
   async function handleSignIn() {
-    signIn()
+    await signIn()
   }
 
   const loginForm = (

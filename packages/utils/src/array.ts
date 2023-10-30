@@ -1,12 +1,16 @@
+// Array functions
+
+import _ from 'lodash'
+import logger from 'logger'
+import { stringify } from './json'
+
 // Split an array (for ex of JSON objects) into chunks based on each chunk having a certain max file size.
 // Flag allows including or excluding items of indeterminate size. If included, item will be in a chunk by itself.
-
-import logger from 'logger'
 
 // ref: https://stackoverflow.com/questions/23318037/size-of-json-object-in-kbs-mbs
 function getObjectFileSize(obj: any) {
   try {
-    const size = new TextEncoder().encode(JSON.stringify(obj)).length
+    const size = new TextEncoder().encode(stringify(obj)).length
     return size
   } catch (e) {
     logger.error('Error calculating object file size')
@@ -55,4 +59,10 @@ export function notEmpty<TValue>(value: TValue | null | undefined): value is TVa
   if (value === null || value === undefined) return false
   const testDummy: TValue = value
   return true
+}
+
+// Unique by id keeping last unique item (instead of default first behaviour of lodash)
+// ref: https://stackoverflow.com/questions/56361944/
+export function reverseUniqById(array: any[]) {
+  return _.uniqWith(_.reverse(_.clone(array)), ({ id: a }, { id: b }) => a === b)
 }

@@ -4,6 +4,7 @@
 import { Link } from '../../components'
 import { useContext } from 'react'
 import { UserAttrContext } from '../(auth)/provider'
+import { QuickSightDash } from '../../components/dash/QuicksightDash'
 import AppLayout from './layout'
 
 export default function App() {
@@ -14,10 +15,11 @@ export default function App() {
       <p>Welcome, {userAttr?.displayName || 'Guest'}!</p>
       <Link href="/view">View data</Link>
       <Link href="/import">Import data</Link>
+      <div className="py-8">
+        <QuickSightDash />
+      </div>
     </div>
   )
-
-  // TODO dashboard (summary stats & graphics on items, collections, types in database)
 
   return (
     <AppLayout>

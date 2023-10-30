@@ -1,11 +1,27 @@
-// Send requests using amplify library
-import { API } from 'aws-amplify'
+import { SignatureV4 } from '@smithy/signature-v4'
+import { HttpRequest } from '@aws-sdk/protocol-http'
+import { Sha256 } from '@aws-crypto/sha256-browser'
+import { Amplify, API } from 'aws-amplify'
+import { StatusCodes } from 'http-status-codes'
+import crypto, { BinaryToTextEncoding } from 'crypto'
+import aws4 from 'aws4'
+
+import awsExports, { apiName} from '../config/amplify'
+Amplify.configure(awsExports)
 
 import logger from 'logger'
-import { AWS_REGION, API_HOST, API_VERSION } from '../config'
-//import { getCredentialsForServices } from './auth'
-import { apiName } from '../config/amplify'
-import { removeEmptyProps } from './props'
+import { stringify } from 'utils'
+import { AWS_REGION, API_HOST, PRODUCTION_APP_URL } from '../config'
+import { getCredentialsForApi } from './auth'
+import { encodeProps, removeEmptyProps } from './props'
+
+const BODY_HASH_HEADER = 'X-Amz-Content-Sha256'
+const AUTH_HEADERS = [
+  'Authorization',
+  'X-Amz-Date',
+  'X-Amz-Security-Token',
+  BODY_HASH_HEADER,
+]
 
 export type HttpMethod =
   | 'GET'
@@ -27,38 +43,104 @@ export interface RequestProps {
   method: HttpMethod
   path: string
   body?: any
-  version?: string
   queryParams?: QueryParameterBag
+  useAws4?: boolean // An alternative to SignatureV4 for signing requests
 }
 
-/*
-// Sign and send requests to HTTP gateway using AWS signature v4
-import { HttpRequest } from '@aws-sdk/protocol-http'
-//import { HttpRequest as HttpRequestType } from '@aws-sdk/types'
-import { SignatureV4 } from '@aws-sdk/signature-v4'
-import { Sha256 } from '@aws-crypto/sha256-browser'
-import { NodeHttpHandler } from '@aws-sdk/node-http-handler'
-import { QueryParameterBag } from '@aws-sdk/types'
+export async function request(props: RequestProps) {
+  return requestUsingCustom(props)
+}
 
+// Sign and send requests to HTTP gateway using AWS signature v4.
 // ref: https://stackoverflow.com/a/74645332
+// ref: https://docs.amplify.aws/guides/functions/graphql-from-lambda/q/platform/js/#iam-authorization
 export async function requestUsingCustom(props: RequestProps) {
   try {
-    const { body = undefined, method, path, version = API_VERSION, queryParams = {} } = props
-    const requestBody = JSON.stringify(body)
-    const request = new HttpRequest({
-      body: requestBody,
-      headers: {
-        'Content-Type': 'application/json',
-        host: API_HOST,
-      },
-      hostname: API_HOST,
-      port: 443,
-      method: method,
-      path: `/${version}/${path}`,
-      query: queryParams,
+    const { body = undefined, method, path, queryParams = {}, useAws4 = false } = props
+    const requestBody = stringify(body)
+    const executeApiPath = `${API_HOST}/${path}`
+    const executeApiEndpoint = new URL(executeApiPath)
+    const encodedQueryParams = encodeProps(removeEmptyProps(queryParams))
+    const queryString = queryParamsToUrlString(encodedQueryParams)
+    const requestUrl = `${executeApiPath}${queryString}`
+    const requestPath = `${executeApiEndpoint.pathname}${queryString}`
+    logger.debug('Execute api endpoint host: ', executeApiEndpoint.host)
+    logger.debug('Request url: ', requestUrl)
+    logger.debug('Request path: ', requestPath)
+
+    /*
+    const cloudFrontPath = `${PRODUCTION_APP_URL}/${path}`
+    const cloudFrontEndpoint = new URL(cloudFrontPath)
+
+    // For CloudFront reverse proxy to API Gateway with IAM auth, need to sign request as if it were being send to API Gateway
+    // ref: https://stackoverflow.com/questions/43060915
+    // ref: https://stackoverflow.com/questions/48815143
+    */
+
+    // Need to conditionally set content-type header, api doesn't support content-type for get requests
+    //  (for ex, to intelligently infer which type to return).
+    const contentTypeHeader: {} | { 'Content-Type': string } = (method === 'GET' || method === 'HEAD') ? {} : {
+      'Content-Type': 'application/json',
+    }
+    const bodyHash = requestBody && getBodyHash(requestBody)
+    logger.debug('Request body hash: ', bodyHash)
+    const bodyHashHeader: {} | { [BODY_HASH_HEADER]: string } = bodyHash ? {
+      [BODY_HASH_HEADER]: bodyHash,
+    } : {}
+    const presignHeaders = {
+      ...contentTypeHeader,
+      ...bodyHashHeader,
+      // Modifying host header is forbidden in browsers and this will be stripped from the request,
+      //  but we need to set here just for the authorization header
+      host: executeApiEndpoint.host,
+    }
+    let signedRequest
+    if (useAws4) {
+      const requestToBeSigned = {
+        method: method.toUpperCase(),
+        headers: presignHeaders,
+        host: executeApiEndpoint.host,
+        body: requestBody,
+        // For aws4.sign(), path should be the full path including query string.
+        path: requestPath,
+      }
+      logger.debug('Request pre-sign: ', requestToBeSigned)
+      signedRequest = await signRequestAws4(requestToBeSigned)
+    } else {
+      const requestToBeSigned = new HttpRequest({
+        method: method.toUpperCase(),
+        protocol: 'https',
+        hostname: executeApiEndpoint.host,
+        // For SignatureV4.sign(HttpRequest), path should be the path excluding query string.
+        path: executeApiEndpoint.pathname,
+        query: encodedQueryParams,
+        headers: presignHeaders,
+        body: requestBody,
+      })
+      logger.debug('Request pre-sign: ', requestToBeSigned)
+      signedRequest = await signRequestSignatureV4(requestToBeSigned) as HttpRequest
+    }
+    logger.debug('Request post-sign: ', signedRequest)
+    const signedHeaders = signedRequest?.headers
+    logger.debug('Request post-sign headers: ', signedHeaders)
+    const fetchHeaders: HeadersInit = Object.entries(signedHeaders as any)?.map(([key, val]: [key: string, val?: any]) => [key, val])
+    logger.debug('Request headers: ', fetchHeaders)
+    //logger.debug('Request query: ', signedRequest?.query)
+    //const requestQueryParams = Object.entries(signedRequest?.query)?.map(([key, val]) => [key, val])
+    //logger.debug('Request query params: ', requestQueryParams)
+    //const request = new Request(cloudFrontPath, { // CloudFront proxying API Gateway using IAM auth only works with custom domain
+    // ref: https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options
+    const request = new Request(requestUrl, {
+      ...signedRequest, 
+      headers: new Headers(fetchHeaders),
+      credentials: 'include',
     })
-    const signedRequest = await signRequest(request)
-    const response = await sendRequest(signedRequest)
+    logger.debug('Request Request: ', request)
+    logger.debug('Request Request.headers:')
+    request?.headers?.forEach((value, key) => {
+      logger.debug(`${key}: ${value}\n`)
+    })
+    const response = await sendRequest(request)
     return response
   } catch (e) {
     logger.error(e)
@@ -66,34 +148,88 @@ export async function requestUsingCustom(props: RequestProps) {
   }
 }
 
-async function signRequest(request: HttpRequest) {
-  const credentials = await getCredentialsForServices()
+// ref: https://github.com/postmanlabs/postman-runtime/blob/develop/lib/authorizer/aws4.js
+function getBodyHash(body: string, algorithm = 'sha256', digestEncoding: BinaryToTextEncoding = 'hex') {
+  if (!body) {
+    return
+  }
+  const hash = crypto.createHash(algorithm)
+  hash.update(body)
+  return hash.digest(digestEncoding)
+}
+
+function queryParamsToUrlString(queryParams: any) {
+  const paramStrings = Object.entries(queryParams).map(([key, val]) => `${key}=${val}`)
+  const queryString = paramStrings?.length > 0 ? '?' + paramStrings?.join('&') : ''
+  return queryString
+}
+
+async function signRequestSignatureV4(request: HttpRequest) {
+  const credentials = await getCredentialsForApi()
+  if (!credentials) {
+    throw new Error('Could not get credentials')
+  }
   const signer = new SignatureV4({
     credentials: credentials,
     region: AWS_REGION,
     service: 'execute-api',
     sha256: Sha256,
   })
-  // SignatureV4 just modifies the request's headers, if we pass in protocol-http/HttpRequest in,
-  //  even though the method signature is types/HttpRequest we should be able to just ignore that.
-  // ref: https://github.com/aws/aws-sdk-js-v3/blob/3bad0433/packages/signature-v4/src/SignatureV4.ts#L245
-  // ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/classes/_aws_sdk_signature_v4.SignatureV4.html#sign
   const signedRequest = await signer.sign(request)
-  return signedRequest as HttpRequest
+  return signedRequest
 }
 
-async function sendRequest(request: HttpRequest) {
-  const handler = new NodeHttpHandler()
-  const { response } = await handler.handle(request)
-  return response
+async function signRequestAws4(request: aws4.Request) {
+  const credentials = await getCredentialsForApi()
+  if (!credentials) {
+    throw new Error('Could not get credentials')
+  }
+  const aws4Credentials: aws4.Credentials = {
+    accessKeyId: credentials.accessKeyId,
+    secretAccessKey: credentials.secretAccessKey,
+    sessionToken: credentials.sessionToken || undefined,
+  }
+  const aws4Request: aws4.Request = {
+    host: request.host,
+    path: request.path,
+    service: 'execute-api',
+    region: AWS_REGION,
+    method: request.method,
+    body: request.body,
+    headers: request.headers,
+    signQuery: false,
+  }
+  const signedRequest = aws4.sign(aws4Request, aws4Credentials)
+  return signedRequest
 }
-*/
 
+async function sendRequest(request: Request) {
+  let status = StatusCodes.OK
+  let responseBody
+  let statusText
+  try {
+    logger.debug('Fetching request using fetch ...')
+    const response = await fetch(request)
+    status = response.status
+    statusText = response.statusText
+    responseBody = await response.json()
+  } catch (error: any) {
+    logger.error('Error sending request: ', error)
+  }
+  return {
+    data: responseBody?.data,
+    status,
+    statusText,
+  }
+}
+
+// Amplify does not obtain correct credentials (from cognito identity pool) and 
+//  so this method fails for IAM secured api.
 // ref: https://docs.amplify.aws/lib/restapi/fetch/q/platform/js/
 export async function requestUsingAmplify(props: RequestProps) {
   try {
-    const { body = undefined, method, path, version = API_VERSION, queryParams = {} } = props
-    const requestBody = JSON.stringify(body)
+    const { body = undefined, method, path, queryParams = {} } = props
+    const requestBody = stringify(body)
     const params = {
       body: requestBody,
       headers: {
@@ -101,7 +237,7 @@ export async function requestUsingAmplify(props: RequestProps) {
         //host: API_HOST,
       },
     }
-    const fullPath = `/${version}/${path}`
+    const fullPath = `/${path}`
     let response
     if (method === 'GET') {
       response = await API.get(apiName, fullPath, {

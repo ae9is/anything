@@ -16,7 +16,7 @@ import {
   waitUntilTableNotExists,
 } from '@aws-sdk/client-dynamodb'
 import logger from 'logger'
-import { Filter, decodeBase64ToJson, encodeJsonToBase64, notEmpty } from 'utils'
+import { Filter, decodeBase64ToJson, encodeJsonToBase64, notEmpty, reverseUniqById } from 'utils'
 import { ddbClient, ddbDocClient, schema, table, testDataFilePath, typesTable } from '../services/dynamodb'
 
 export interface ItemKey {
@@ -70,7 +70,8 @@ export const loadTestData = async () => {
 export const batchGet = async (keys: ItemKey[], batchSize = 50, projectionExpression?: string) => {
   const items: Record<string, any>[] = []
   let errorCount = 0
-  const batches = _.chunk(keys, batchSize)
+  // Deduplicate keys (required for BatchGetCommand) and then chunk into batches
+  const batches = _.chunk(_.uniqWith(keys, _.isEqual), batchSize)
   const batchRequests = batches?.map(async (batch, i) => {
     const keys = {
       Keys: batch,
@@ -119,14 +120,21 @@ export const batchWriteFromJson = async (items: any[]) => {
 
 export const batchWrite = async (itemsOrCollections: Item[], batchSize = 25) => {
   const [versionedItems, unversionedItems] = validateItems(itemsOrCollections)
+  logger.debug('Versioned items passing validation: ', versionedItems)
+  logger.debug('Unversion items passing validation: ', unversionedItems)
   const diff = itemsOrCollections?.length - (versionedItems?.length ?? 0) - (unversionedItems?.length ?? 0)
   if (diff > 0) {
     logger.log(`Warning: ${diff} items did not pass validation`)
   }
-  // Versioned database items (like items) need to have their item metadata read to determine current version
-  const versionedItemsMetadataKeys: ItemKey[] = versionedItems?.map((item) => {
+  // Versioned database items (like items) need to have their item metadata read to determine current version.
+  // De-duplicate item ids before getting metadata.
+  const versionedItemsIds = new Set()
+  versionedItems?.forEach((item) => {
+    versionedItemsIds.add(item.id)
+  })
+  const versionedItemsMetadataKeys: ItemKey[] = Array.from(versionedItemsIds)?.map((itemId) => {
     return {
-      id: item.id,
+      id: itemId,
       sort: '@meta',
     }
   })
@@ -147,29 +155,58 @@ export const batchWrite = async (itemsOrCollections: Item[], batchSize = 25) => 
       }
     }
   })
-  logger.debug('Metadata: ', metadata)
+  logger.debug('Retrieved metadata: ', metadata)
   // Write 3 requests for each versioned item:
   // - Update metadata version
   // - Update current item
   // - Update archived (versioned) copy of item
   const versionedPutRequests = versionedItems?.flatMap((item) => {
     const newVersion = metadata[item?.id]?.currentVersion + 1 ?? 1
+    if (metadata[item?.id]) {
+      // If the same item (id, sort) is contained multiple times in the upload file,
+      //  the versions will ascend according to order in file. Sort key will be ignored by design.
+      metadata[item.id].currentVersion = newVersion
+    }
     return [
-      {
-        PutRequest: {
-          Item: withDate({...item, sort: 'v0'}),
-        },
-      },
+      // Current version of item must be written only once
+//      {
+//        PutRequest: {
+//          Item: withDate({...item, sort: 'v0'}),
+//        },
+//      },
       {
         PutRequest: {
           Item: withDate({...item, sort: `v${newVersion}`}),
         },
       },
+      // Metadata must only be written to once even if multiple items with same id are in upload file
+//      {
+//        PutRequest: {
+//          Item: {...metadata[item.id], currentVersion: newVersion},
+//        },
+//      },
+    ]
+  })
+  logger.debug('Updated metadata: ', metadata)
+  // Only write last version of item in upload file as current item version
+  const currentVersionPutRequests = reverseUniqById(versionedItems)?.flatMap((item: any) => {
+    return [
       {
         PutRequest: {
-          Item: {...metadata[item.id], currentVersion: newVersion},
+          Item: withDate({...item, sort: 'v0'}),
         },
-      },
+      }
+    ]
+  })
+  const metadataPutRequests = Object.keys(metadata)?.flatMap((id: any) => {
+    return [
+      {
+        PutRequest: {
+          Item: {
+            ...metadata[id],
+          },
+        }
+      }
     ]
   })
   // Unversioned database items (like collections) just get directly overwritten
@@ -178,7 +215,22 @@ export const batchWrite = async (itemsOrCollections: Item[], batchSize = 25) => 
       Item: withDate(item),
     },
   }))
-  const batches = _.chunk([...unversionedPutRequests, ...versionedPutRequests], batchSize)
+  logger.debug('Versioned put requests:')
+  versionedPutRequests?.forEach(req => {
+    const { id, sort } = req.PutRequest.Item
+    logger.debug(`Put item: ${id}, ${sort}`)
+  })
+  logger.debug('Metadata put requests:')
+  metadataPutRequests?.forEach(req => {
+    const { id, sort } = req.PutRequest.Item
+    logger.debug(`Put item: ${id}, ${sort}`)
+  })
+  logger.debug('Unversioned put requests:')
+  unversionedPutRequests?.forEach(req => {
+    const { id, sort } = req.PutRequest.Item
+    logger.debug(`Put item: ${id}, ${sort}`)
+  })
+  const batches = _.chunk([...unversionedPutRequests, ...versionedPutRequests, ...currentVersionPutRequests, ...metadataPutRequests], batchSize)
   const batchRequests = batches?.map(async (batch, i) => {
     const cmd = new BatchWriteCommand({
       RequestItems: {
@@ -201,7 +253,8 @@ const validateItems = (items: any[]) => {
     throw new Error('No valid items')
   }
   const validVersionedItems: Item[] = items?.filter(isValidItem)?.filter(isVersioned) ?? []
-  const validUnversionedItems: Item[] = items?.filter(isValidItem)?.filter(i => !isVersioned(i)) ?? []
+  // Unversioned items must be unique on id; we can't batch write to the same key (id + sort) or the write operation will fail
+  const validUnversionedItems: Item[] = _.uniqBy(items?.filter(isValidItem)?.filter(i => !isVersioned(i)), 'id') ?? []
   return [validVersionedItems, validUnversionedItems]
 }
 
@@ -301,6 +354,14 @@ export const queryByTypeAndFilter = async (
   limit?: number,
   ascendingSortKey?: boolean
 ) => {
+  logger.debug('queryByTypeAndFilter...')
+  logger.debug('type: ', type)
+  logger.debug('filter: ', filter)
+  logger.debug('startKey: ', startKey)
+  logger.debug('index: ', index)
+  logger.debug('indexPartitionKey: ', indexPartitionKey)
+  logger.debug('limit: ', limit)
+  logger.debug('asc: ', ascendingSortKey)
   const decodedStartKey = decodeKey(startKey)
   const sortKeyExpression = filter?.sortKeyExpression ? ' and ' + filter?.sortKeyExpression : ''
   const keyConditionExpression = '#type = :type' + sortKeyExpression
@@ -328,6 +389,7 @@ export const queryByTypeAndFilter = async (
     FilterExpression: filter?.filterExpression,
     ExclusiveStartKey: decodedStartKey,
     Limit: limit,
+    // ref: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-ScanIndexForward
     ScanIndexForward: ascendingSortKey,
   })
   const resp = await ddbDocClient.send(cmd)

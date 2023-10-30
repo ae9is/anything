@@ -1,56 +1,87 @@
 listItemsByTypeAndFilter:
   handler: src/modules/item/item_handler.itemsByTypeAndFilter
   events:
-    - httpApi:
-        path: /v1/types/{id}/items
-        method: get
+    - http:
+        path: /types/{id}/items
+        #method: get
+        method: post
         authorizer:
           type: aws_iam
+listItemsByTypeAndFilterOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - http:
+        path: /types/{id}/items
+        method: options
 listItemsByCollection:
   handler: src/modules/item/item_handler.itemsByCollection
   events:
-    - httpApi:
-        path: /v1/collections/{id}/items
+    - http:
+        path: /collections/{id}/items
         method: get
         authorizer:
           type: aws_iam
+listItemsByCollectionOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - http:
+        path: /collections/{id}/items
+        method: options
 getItem:
   handler: src/modules/item/item_handler.itemById
   events:
-    - httpApi:
-        path: /v1/items/{id}
+    - http:
+        path: /items/{id}
         method: get
         authorizer:
           type: aws_iam
+getItemOptions: # also postItemOptions, deleteItemOptions
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - http:
+        path: /items/{id}
+        method: options
 getItemVersions:
   handler: src/modules/item/item_handler.itemVersionsById
   events:
-    - httpApi:
-        path: /v1/items/{id}/versions
+    - http:
+        path: /items/{id}/versions
         method: get
         authorizer:
           type: aws_iam
+getItemVersionsOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - http:
+        path: /items/{id}/versions
+        method: options
 postItem:
   handler: src/modules/item/item_handler.upsertItem
   events:
-    - httpApi:
-        path: /v1/items/{id}
+    - http:
+        path: /items/{id}
         method: post
         authorizer:
           type: aws_iam
 postBatchItems:
   handler: src/modules/item/item_handler.upsertBatchItems
   events:
-    - httpApi:
-        path: /v1/items
+    - http:
+        path: /items
         method: post
         authorizer:
           type: aws_iam
+postBatchItemsOptions:
+  handler: src/modules/cors/cors_handler.options
+  events:
+    - http:
+        path: /items
+        method: options
 deleteItem:
   handler: src/modules/item/item_handler.deleteItem
   events:
-    - httpApi:
-        path: /v1/items/{id}
+    - http:
+        path: /items/{id}
         method: delete
         authorizer:
           type: aws_iam

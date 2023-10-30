@@ -6,6 +6,11 @@ A client running on Next.js using the experimental app router.
 
 Make sure to edit `src/config/config.ts` after you've deployed your api resources so the client knows where to connect to.
 
+You can make sure the S3 bucket commands run via `bash` (and not `sh`) by setting the following npm config:
+```sh
+npm config set script-shell /bin/bash
+```
+
 ## Running
 
 ```sh
