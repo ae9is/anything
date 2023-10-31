@@ -1,5 +1,5 @@
 import { useContext } from 'react'
-import { UserAttrContext } from '../app/(auth)/provider'
+import { UserAttrContext } from './auth/AuthProvider'
 
 export function Avatar() {
   const userAttr = useContext(UserAttrContext)

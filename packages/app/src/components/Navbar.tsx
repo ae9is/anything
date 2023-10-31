@@ -1,5 +1,5 @@
 import { useContext, useRef } from 'react'
-import { UserAttrContext } from '../app/(auth)/provider'
+import { UserAttrContext } from './auth/AuthProvider'
 import { Link } from './Link'
 import { Avatar } from './Avatar'
 import { signOut } from '../lib/auth'

@@ -23,6 +23,9 @@
   ],
   "exclude": [
     "dist",
-    "node_modules"
+    "node_modules",
+    // Need to ignore directories here for "next build" since Next.js itself can't do it
+    // ref: https://github.com/vercel/next.js/issues/11144
+    "src/_app_"
   ]
 }
