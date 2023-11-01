@@ -14,7 +14,7 @@ export function Link(props: LinkProps) {
   const { noUnderline = false, noActive = false, className, children, href, ...rest } = props
 
   const pathname = usePathname()
-  const isActive = pathname.includes(href.toString()) && !noActive
+  const isActive = pathname?.includes(href.toString()) && !noActive
 
   const defaultClasses = isActive ? 'text-primary' : 'text-base-content'
   const underlineHighlight = 'underline-offset-4 underline decoration-1 hover:decoration-2 decoration-primary ' +

@@ -23,7 +23,7 @@ export function Navbar() {
       <>
         {links?.map((name, idx) => {
           const href = `/${name.toLowerCase()}`
-          const isActive = pathname.includes(href.toString())
+          const isActive = pathname?.includes(href.toString())
           const className = modal
             ? 'block -ml-px pl-4 border-l ' +
               (isActive
