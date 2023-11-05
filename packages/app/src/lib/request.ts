@@ -154,13 +154,14 @@ export async function requestUsingCustom(props: RequestProps) {
 // Convert headers returned from Aws4 or SignatureV4 request signing into 
 //  headers that can be used to create a fetch api Request.
 function convertHeaders(signedHeaders?: HeaderBag | OutgoingHttpHeaders): HeadersInit {
-  const headers = removeEmptyProps(Object.entries(signedHeaders ?? {})?.map(
+  const stringHeaders: { [key: string]: string | undefined } = {}
+  Object.entries(signedHeaders ?? {})?.forEach(
     ([key, val]: [key: string, val?: OutgoingHttpHeader]) => {
-      return { [key]: stringify(val) }
+      stringHeaders[key] = String(val)
     }
-  ))
-  const fetchHeaders: HeadersInit = headers
-  return fetchHeaders
+  )
+  const headers: HeadersInit = removeEmptyProps(stringHeaders)
+  return headers
 }
 
 // ref: https://github.com/postmanlabs/postman-runtime/blob/develop/lib/authorizer/aws4.js
