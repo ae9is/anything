@@ -1,4 +1,5 @@
 import { SignatureV4 } from '@smithy/signature-v4'
+import { HeaderBag } from '@smithy/types'
 import { HttpRequest } from '@aws-sdk/protocol-http'
 import { Sha256 } from '@aws-crypto/sha256-browser'
 import { Amplify, API } from 'aws-amplify'
@@ -14,6 +15,8 @@ import { stringify } from 'utils'
 import { AWS_REGION, API_HOST, PRODUCTION_APP_URL } from '../config'
 import { getCredentialsForApi } from './auth'
 import { encodeProps, removeEmptyProps } from './props'
+import { OutgoingHttpHeaders } from 'http2'
+import { OutgoingHttpHeader } from 'http'
 
 const BODY_HASH_HEADER = 'X-Amz-Content-Sha256'
 const AUTH_HEADERS = [
@@ -123,7 +126,7 @@ export async function requestUsingCustom(props: RequestProps) {
     logger.debug('Request post-sign: ', signedRequest)
     const signedHeaders = signedRequest?.headers
     logger.debug('Request post-sign headers: ', signedHeaders)
-    const fetchHeaders: HeadersInit = Object.entries(signedHeaders as any)?.map(([key, val]: [key: string, val?: any]) => [key, val])
+    const fetchHeaders = convertHeaders(signedHeaders)
     logger.debug('Request headers: ', fetchHeaders)
     //logger.debug('Request query: ', signedRequest?.query)
     //const requestQueryParams = Object.entries(signedRequest?.query)?.map(([key, val]) => [key, val])
@@ -146,6 +149,18 @@ export async function requestUsingCustom(props: RequestProps) {
     logger.error(e)
     throw e
   }
+}
+
+// Convert headers returned from Aws4 or SignatureV4 request signing into 
+//  headers that can be used to create a fetch api Request.
+function convertHeaders(signedHeaders?: HeaderBag | OutgoingHttpHeaders): HeadersInit {
+  const headers = removeEmptyProps(Object.entries(signedHeaders ?? {})?.map(
+    ([key, val]: [key: string, val?: OutgoingHttpHeader]) => {
+      return { [key]: stringify(val) }
+    }
+  ))
+  const fetchHeaders: HeadersInit = headers
+  return fetchHeaders
 }
 
 // ref: https://github.com/postmanlabs/postman-runtime/blob/develop/lib/authorizer/aws4.js
