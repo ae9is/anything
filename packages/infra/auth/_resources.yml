@@ -55,6 +55,9 @@ Resources:
         - http://localhost:3000/
         - https://${param:distributionDomainName}/
         #- !Sub https://${Distribution.DomainName}/
+      LogoutURLs:
+        - http://localhost:3000/
+        - https://${param:distributionDomainName}/
       AllowedOAuthFlowsUserPoolClient: True
       GenerateSecret: False
 
