@@ -30,6 +30,7 @@ services:
     params:
       loggingBucket: ${anything-web.loggingBucket}
       streamArn: ${anything-database.streamArn}
+      streamTableName: ${anything-database.streamTableName}
     dependsOn:
       - anything-web
       - anything-database

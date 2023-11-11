@@ -2,6 +2,18 @@
 service: anything-data
 frameworkVersion: "3"
 configValidationMode: warn
+plugins:
+  - serverless-esbuild
+custom:
+  # ref: https://www.serverless.com/plugins/serverless-esbuild
+  esbuild:
+    bundle: true
+    minify: false
+#    watch:
+#      pattern: './**/*.(js|ts)'
+#      ignore: ['./__tests__/**/*', './**/*.test.ts']  # OK
 resources:
   - ${file(_resources.yml)}
 provider: ${file(./_provider.yml)}  # OK
+functions:
+  - ${file(./src/modules/stream/stream.functions.yml)}

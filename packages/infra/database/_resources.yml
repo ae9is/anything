@@ -69,3 +69,5 @@ Resources:
 Outputs:
   streamArn:
     Value: !GetAtt MainTable.StreamArn
+  streamTableName:
+    Value: !Ref MainTable

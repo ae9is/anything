@@ -1,5 +1,9 @@
 name: aws
-runtime: nodejs18.x
+#runtime: nodejs18.x
+# Need to rewrite handler or use node 16, as node 18 runtime doesn't have 
+#  aws-sdk (i.e. AWS SDK v2) bundled
+runtime: nodejs16.x
+#memory: 256
 stage: ${env:STAGE, 'dev'}
 region: ${env:AWS_REGION}
 # Opt in to CloudFormation direct deployments
@@ -8,3 +12,20 @@ deploymentMethod: direct
 environment:
   NAMESPACE: anything-${sls:stage}
   AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+  TRANSFORMER_FUNCTION: unmarshallDynamoDBTransformer
+iam:
+  role:
+    statements:
+      - Effect: Allow
+        Action:
+          - 'firehose:PutRecord'
+          - 'firehose:PutRecordBatch'
+          - 'firehose:UpdateDestination'
+        Resource: !GetAtt DeliveryStream.Arn
+      - Effect: Allow
+        Action:
+          - 'dynamodb:DescribeStream'
+          - 'dynamodb:GetRecords'
+          - 'dynamodb:GetShardIterator'
+          - 'dynamodb:ListStreams'
+        Resource: ${param:streamArn}

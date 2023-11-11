@@ -18,19 +18,12 @@ Resources:
 #        VersioningConfiguration:
 #          Status: Enabled
 
-  Stream:
-    Type: AWS::Kinesis::Stream
-    Properties: 
-      Name: ${self:provider.environment.NAMESPACE}-stream
-      StreamEncryption:
-        EncryptionType: KMS
-        KeyId: alias/aws/kinesis
-      StreamModeDetails:
-        StreamMode: ON_DEMAND
-
   DeliveryStreamRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: ${self:provider.environment.NAMESPACE}-delivery-stream-role
+      Path: '/anything/roles/'
+      Description: 'Role for Firehose to read/write to data bucket'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -42,47 +35,34 @@ Resources:
             Condition:
               StringEquals:
                 'sts:ExternalId': !Ref 'AWS::AccountId'
-
-  # To add permissions to use customer management keys refer to:
-  #  https://docs.aws.amazon.com/firehose/latest/dev/controlling-access.html#using-iam-s3
-  DeliveryStreamPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Allow reading data stream and read/write to data bucket
-      Roles: 
-        - !Ref DeliveryStreamRole
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - 'kinesis:Get*'
-              - 'kinesis:DescribeStream*'
-              - 'kinesis:List*'
-            Resource: !GetAtt Stream.Arn
-          - Effect: Allow
-            Action:
-              - 's3:AbortMultipartUpload'
-              - 's3:GetBucketLocation'
-              - 's3:GetObject'
-              - 's3:ListBucket'
-              - 's3:ListBucketMultipartUploads'
-              - 's3:PutObject'
-            Resource:
-              - !GetAtt DataBucket.Arn
-              - !Sub ${DataBucket.Arn}/*
+      Policies:
+      # To add permissions to use customer management keys refer to:
+      #  https://docs.aws.amazon.com/firehose/latest/dev/controlling-access.html#using-iam-s3
+        - PolicyName: ${self:provider.environment.NAMESPACE}-delivery-stream-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:AbortMultipartUpload'
+                  - 's3:GetBucketLocation'
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                  - 's3:ListBucketMultipartUploads'
+                  - 's3:PutObject'
+                Resource:
+                  - !GetAtt DataBucket.Arn
+                  - !Sub ${DataBucket.Arn}/*
 
   # ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-kinesisfirehose-deliverystream.html
   DeliveryStream: 
     Type: AWS::KinesisFirehose::DeliveryStream
-    DependsOn:
-      - DeliveryStreamPolicy
     Properties: 
-      DeliveryStreamName: ${self:provider.environment.NAMESPACE}-delivery-stream
-      DeliveryStreamType: KinesisStreamAsSource
-      KinesisStreamSourceConfiguration: 
-        KinesisStreamARN: !GetAtt Stream.Arn
-        RoleARN: !GetAtt DeliveryStreamRole.Arn
+      # Match the source DynamoDB table name, this match is used by lambda-streams-to-firehose handler
+      DeliveryStreamName: ${param:streamTableName}
+      DeliveryStreamType: DirectPut
+      DeliveryStreamEncryptionConfigurationInput:
+        KeyType: AWS_OWNED_CMK
       ExtendedS3DestinationConfiguration: 
         BucketARN: !GetAtt DataBucket.Arn
         BufferingHints: 
@@ -95,9 +75,3 @@ Resources:
         #  and billing for Firehose and Athena is by data size.
         CompressionFormat: GZIP
         RoleARN: !GetAtt DeliveryStreamRole.Arn
-
-Outputs:
-  stream:
-    Value: !Ref Stream
-  streamArn:
-    Value: !GetAtt Stream.Arn
