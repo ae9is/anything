@@ -131,7 +131,7 @@ export default withLayout(function Page() {
         {totalCount > 0 && totalCount !== processedCount && (
           <>
             <div className="mb-4">
-              Processing {processedCount} of {totalCount} ...
+              Processed {processedCount} of {totalCount} ...
             </div>
             <button className="btn" type="button" onClick={handleCancel}>
               Cancel
