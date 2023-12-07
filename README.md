@@ -15,6 +15,7 @@ _Please note this is an example app not intended for production. If you want to 
 - Almost all infrastructure defined in code, except authorisation provider (IAM Identity Center, currently lacks much CloudFormation support).
 - Client run on Next.js via the experimental app router (but just exported to a static bundle for hosting via an S3 bucket anyways).
 - MUI's x-data-grid powers client data tables. TailwindCSS used for styling with daisyUI on top to simplify basic component styling and add theming support.
+- DynamoDB streams incremental updates to live summary dashboard via Lambda, Kinesis Firehose and Athena.
 
 ### C4 Diagrams
 
@@ -58,8 +59,12 @@ C4Container
   Container_Boundary(anything, "anything item management system") {
     Container(cdn, "Content delivery network", "Cloudfront, S3", "Delivers single page app<br>hosted on S3 bucket to user<br>from a nearby edge location")
     Container(spa, "Single page app", "Next.js, Typescript, React", "Provides item management<br>functionality to users<br>via web browser")
-    Container(api, "API", "Serverless framework,<br>AWS HTTP gateway,<br>lambda functions", "Interface for app to database")
+    Container(dash, "Live dashboard", "", "Real time summary stats")
+    Container(api, "API", "Serverless framework,<br>API Gateway,<br>Lambda functions", "Interface for app to database<br>")
     ContainerDb(database, "Database", "DynamoDB", "Stores items,<br>collections of items of different types")
+    Container(athena, "Queries", "Athena", "")
+    Container(stream, "Transform & Stream", "Lambda to Kinesis Firehose", "Pipeline to store DynamoDB streams data<br>into S3 in analytics-friendly format")
+    ContainerDb(s3, "Storage bucket", "S3", "Stores items<br>for analytics queries")
   }
   Rel(user, cdn, "Visits hosting domain", "HTTPS")
   UpdateRelStyle(user, cdn, $offsetY="-50", $offsetX="-130")
@@ -67,13 +72,23 @@ C4Container
   UpdateRelStyle(cdn, spa, $offsetY="20", $offsetX="-40")
   Rel(user, spa, "Imports, exports,<br>and views items")
   UpdateRelStyle(user, spa, $offsetY="-40", $offsetX="-45")
+  Rel(spa, dash, "Displays live<br>dashboard")
   Rel(spa, api, "Calls", "async HTTPS<br>/ JSON")
-  UpdateRelStyle(spa, api, $offsetY="-40" $offsetX="-30")
+  UpdateRelStyle(spa, api, $offsetY="-15" $offsetX="-80")
+  UpdateRelStyle(spa, dash, $offsetY="-25" $offsetX="-30")
   Rel(spa, userdir, "Authenticates<br>and gets API credentials")
   UpdateRelStyle(spa, userdir, $offsetY="-50" $offsetX="10")
-  Rel(api, database, "Performs CRUD operations", "AWS SDK for JS v3<br>lib-dynamodb")
-  UpdateRelStyle(api, database, $offsetY="40", $offsetX="-30")
+  Rel(api, database, "Performs CRUD operations", "AWS SDK for JS v3,<br>lib-dynamodb")
+  UpdateRelStyle(api, database, $offsetY="45", $offsetX="-40")
   UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
+  Rel(database, stream, "Passes updates", "DynamoDB Stream")
+  UpdateRelStyle(database, stream, $offsetY="15" $offsetX="10")
+  Rel(stream, s3, "Stores", "Lambda,<br>Kinesis Firehose")
+  UpdateRelStyle(stream, s3, $offsetY="15" $offsetX="-40")
+  Rel(athena, s3, "Queries", "")
+  UpdateRelStyle(athena, s3, $offsetY="10" $offsetX="30")
+  Rel(dash, athena, "Queries", "")
+  UpdateRelStyle(dash, athena, $offsetY="0" $offsetX="10")
 ```
 
 ## Running locally

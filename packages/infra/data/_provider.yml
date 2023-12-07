@@ -1,5 +1,9 @@
 name: aws
-runtime: nodejs18.x
+#runtime: nodejs18.x
+# Need to rewrite handler or use node 16, as node 18 runtime doesn't have 
+#  aws-sdk (i.e. AWS SDK v2) bundled
+runtime: nodejs16.x
+#memory: 256
 stage: ${env:STAGE, 'dev'}
 region: ${env:AWS_REGION}
 # Opt in to CloudFormation direct deployments
@@ -7,4 +11,26 @@ region: ${env:AWS_REGION}
 deploymentMethod: direct
 environment:
   NAMESPACE: anything-${sls:stage}
+  # Athena needs lowercase, numbers, and underscores for database / table / column names. I.e. no dashes in names.
+  # ref: https://docs.aws.amazon.com/athena/latest/ug/glue-best-practices.html#schema-names
+  NAMESPACE_ATHENA: anything_${sls:stage}
+  DATA_BUCKET_NAME: anything-${sls:stage}-data
+  DATA_BUCKET_LOCATION: s3://anything-${sls:stage}-data/main/
   AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+  TRANSFORMER_FUNCTION: flattenDynamoDBTransformer
+iam:
+  role:
+    statements:
+      - Effect: Allow
+        Action:
+          - 'firehose:PutRecord'
+          - 'firehose:PutRecordBatch'
+          - 'firehose:UpdateDestination'
+        Resource: !GetAtt DeliveryStream.Arn
+      - Effect: Allow
+        Action:
+          - 'dynamodb:DescribeStream'
+          - 'dynamodb:GetRecords'
+          - 'dynamodb:GetShardIterator'
+          - 'dynamodb:ListStreams'
+        Resource: ${param:streamArn}

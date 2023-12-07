@@ -1,0 +1,15 @@
+streamToFirehose:
+  handler: src/modules/stream/lambda-streams-to-firehose/handler.handler
+  events:
+    # ref: https://www.serverless.com/framework/docs/providers/aws/events/streams
+    - stream:
+        type: dynamodb
+        arn: ${param:streamArn}
+        batchWindow: 10 # seconds
+        batchSize: 100
+        bisectBatchOnFunctionError: true
+        maximumRetryAttempts: 1 # 10
+        startingPosition: TRIM_HORIZON # LATEST
+        enabled: true
+
+
