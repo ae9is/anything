@@ -21,6 +21,7 @@ transformerRegistry = {
   jsonToStringTransformer: 'jsonToStringTransformer',
   regexToDelimTextTransformer: 'regexToDelimTextTransformer',
   unmarshallDynamoDBTransformer: 'unmarshallDynamoDBTransformer',
+  flattenDynamoDBTransformer: 'flattenDynamoDBTransformer',
 }
 supportedDatatypeTransformerMappings = {
   JSON: transformerRegistry.jsonToStringTransformer,
@@ -30,3 +31,5 @@ supportedDatatypeTransformerMappings = {
 }
 setRegion = process.env['AWS_REGION'] || 'us-east-1'
 DEFAULT_DELIVERY_STREAM = process.env['DEFAULT_DELIVERY_STREAM'] || 'delivery-stream-name'
+// For flattenDynamoDBTransformer only:
+EXTRACT_KEYS = process.env['EXTRACT_KEYS'] || 'modified,author,type,ctype,deleted,currentVersion'

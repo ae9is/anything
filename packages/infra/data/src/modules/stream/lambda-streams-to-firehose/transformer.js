@@ -61,6 +61,37 @@ function unmarshall(json) {
   return aws.DynamoDB.Converter.unmarshall(json)
 }
 
+// Unmarshall DynamoDB streams data, and flatten/filter data, extracting only the specified keys from NewImage.
+// Data in Keys (i.e. id, sort) will always be extracted but can be overwritten by extract keys for NewImage if specified.
+// 
+// Also extracts data.eventName (INSERT, MODIFY, REMOVE). It's missing in the docs but present in the actual stream record.
+// ref: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_Record.html
+//      https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_StreamRecord.html
+function flattenDynamoDBTransformer(data, callback) {
+  let extractKeys = EXTRACT_KEYS?.split(',')
+  if (!extractKeys || extractKeys.length <= 0) {
+    extractKeys = []
+  }
+  let json = data
+  if (typeof data === 'string' || data instanceof String) {
+    json = JSON.parse(data)
+  }
+  let keys = data?.Keys ? unmarshall(data.Keys) : {}
+  let newImage = data?.NewImage ? unmarshall(data.NewImage) : {}
+  const eventName = data?.eventName
+  const filtered = { eventName, ...keys, ...filter(newImage, extractKeys) }
+  callback(null, Buffer.from(JSON.stringify(filtered) + '\n', targetEncoding))
+}
+exports.flattenDynamoDBTransformer = flattenDynamoDBTransformer
+
+// Return an object with only specified keys in it
+function filter(object, filterKeys) {
+  return Object.keys(object).filter(key => filterKeys.includes(key)).reduce((filtered, key) => {
+    filtered[key] = object[key]
+    return filtered
+  }, {})
+}
+
 /**
  * Example transformer that converts a regular expression to delimited text
  * 
