@@ -1,0 +1,10 @@
+name: aws
+runtime: nodejs18.x
+stage: ${env:STAGE, 'dev'}
+region: ${env:AWS_REGION}
+# Opt in to CloudFormation direct deployments
+# ref: https://www.serverless.com/framework/docs/providers/aws/guide/deploying
+deploymentMethod: direct
+environment:
+  NAMESPACE: anything-${sls:stage}
+  AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1

@@ -1,0 +1,92 @@
+Resources:
+  GrafanaUser:
+    Type: AWS::IAM::User
+    Properties:
+      Path: '/anything/users/'
+
+  GrafanaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ${self:provider.environment.NAMESPACE}-grafana-role
+      Path: '/anything/roles/' # becomes for ex: anything/roles/anything-dash-dev-grafana-role
+      Description: 'Role for Grafana dashboard'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt GrafanaUser.Arn
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: ${self:provider.environment.NAMESPACE}-grafana-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # ref: https://github.com/grafana/athena-datasource
+              # ref: https://docs.aws.amazon.com/grafana/latest/userguide/security-iam-awsmanpol.html#security-iam-awsmanpol-AmazonGrafanaAthenaAccess
+              - Sid: "AthenaQueryAccess"
+                Effect: "Allow"
+                Action:
+                  - "athena:ListDatabases"
+                  - "athena:ListDataCatalogs"
+                  - "athena:ListWorkGroups"
+                  - "athena:GetDatabase"
+                  - "athena:GetDataCatalog"
+                  - "athena:GetQueryExecution"
+                  - "athena:GetQueryResults"
+                  - "athena:GetTableMetadata"
+                  - "athena:GetWorkGroup"
+                  - "athena:ListTableMetadata"
+                  - "athena:StartQueryExecution"
+                  - "athena:StopQueryExecution"
+                Resource:
+                  - "*"
+              - Sid: "GlueReadAccess"
+                Effect: "Allow"
+                Action:
+                  - "glue:GetDatabase"
+                  - "glue:GetDatabases"
+                  - "glue:GetTable"
+                  - "glue:GetTables"
+                  - "glue:GetPartition"
+                  - "glue:GetPartitions"
+                  - "glue:BatchGetPartition"
+                Resource:
+                  - !Sub arn:aws:glue:${env:AWS_REGION}:${AWS::AccountId}:catalog
+                  - !Sub arn:aws:glue:${env:AWS_REGION}:${AWS::AccountId}:database/*
+                  - !Sub arn:aws:glue:${env:AWS_REGION}:${AWS::AccountId}:table/*
+              - Sid: "BucketAccess"
+                Effect: "Allow"
+                Action:
+                  - "s3:GetBucketLocation"
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                  - "s3:ListBucketMultipartUploads"
+                  - "s3:ListMultipartUploadParts"
+                  - "s3:AbortMultipartUpload"
+                  - "s3:PutObject"
+                Resource:
+                  - "${param:queryResultsBucketArn}"
+                  - "${param:queryResultsBucketArn}/*"
+              # Following permissions could be trimmed down.
+              #  Not sure what exactly is needed by Grafana here as it's missing from the documentation (links above).
+              # Based on AWS managed policy Athena full access:
+              #  ref: https://docs.aws.amazon.com/athena/latest/ug/managed-policies.html#amazonathenafullaccess-managed-policy
+              - Sid: "UndocumentedRequiredBucketPermissions"
+                Effect: "Allow"
+                Action:
+                  #- "s3:ListBucket"
+                  #- "s3:GetBucketLocation"
+                  #- "s3:ListAllMyBuckets"
+                  - "s3:*"
+                  - "s3-object-lambda:*"
+                Resource:
+                  - "arn:aws:s3:::*"
+              - Sid: "AthenaExamples"
+                Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                Resource:
+                  - "arn:aws:s3:::athena-examples"
