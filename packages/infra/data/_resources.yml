@@ -239,7 +239,7 @@ Resources:
                 hour string
               )
               STORED AS ORC
-              LOCATION "${self:provider.environment.DATA_BUCKET_LOCATION}"
+              LOCATION "${self:provider.environment.DATA_BUCKET_LOCATION}/"
               TBLPROPERTIES (
                 "orc.compress" = "ZLIB",
                 "projection.enabled" = "true",
