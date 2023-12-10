@@ -16,7 +16,8 @@ export function Navbar() {
     'View',
     'Import',
     'Healthz',
-    'Test'
+    'Test',
+    'Stats',
   ]
   function navbarLinks(modal?: boolean) {
     return (

@@ -1,6 +1,5 @@
 import { Link } from '../components'
 import { useContext } from 'react'
-import { QuickSightDash } from '../components/dash/QuicksightDash'
 import { UserAttrContext } from '../components/auth/AuthProvider'
 
 export default function Page() {
@@ -11,9 +10,7 @@ export default function Page() {
       <p>Welcome, {userAttr?.displayName || 'Guest'}!</p>
       <Link href="/view">View data</Link>
       <Link href="/import">Import data</Link>
-      <div className="py-8">
-        <QuickSightDash />
-      </div>
+      <Link href="/stats">Stats</Link>
     </div>
   )
 
