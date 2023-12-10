@@ -10,3 +10,4 @@ with the migrations and seeding code needed for offline development plugins.
 - `data` - Data lake storage and analytics resources
 - `web` - Web client hosting resources
 - `database` - DynamoDB database
+- `dash` - Live dashboard service via Grafana, requires additional setup

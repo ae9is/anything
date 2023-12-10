@@ -114,7 +114,9 @@ This Turborepo includes the following packages and apps:
 
 - `api`: a [Serverless](https://serverless.com/) api on AWS or localhost
 - `app`: a [Next.js](https://nextjs.org/) app using app router
+- `infra`: [Serverless](https://serverless.com/) infrastructure on AWS, broken into sub-packages
 - `logger`: a small wrapper around console.log
 - `utils`: some shared code between api and app
 - `eslint-config-*`: ESLint configurations
 - `tsconfig`: tsconfig.json's used throughout the monorepo
+- `jest-presets`: Jest config
