@@ -190,12 +190,14 @@ Resources:
       LoggingConfiguration:
         DestinationBucketName: ${param:loggingBucket}
         LogFilePrefix: s3-queries-logs
-      LifecycleConfiguration:
-        # Lifecycle rules run once per day; clean up old queries since they're for a live dashboard
-        Rules:
-          - Id: Daily deletion
-            ExpirationInDays: 1
-            Status: Enabled
+#      LifecycleConfiguration:
+#        # Lifecycle rules run once per day; clean up old queries since they're for a live dashboard
+#        # TODO If cleanup is enabled, don't remove table (CreateAthenaTable) metadata.
+#        #  I.e. just UserActivity/, ItemCountsByType/, Unsaved/ could be wiped daily.
+#        Rules:
+#          - Id: Daily deletion
+#            ExpirationInDays: 1
+#            Status: Enabled
 
   WorkGroup:
     Type: AWS::Athena::WorkGroup
@@ -210,6 +212,7 @@ Resources:
           ExpectedBucketOwner: !Ref AWS::AccountId
           OutputLocation: !Sub s3://${QueryResultsBucket}
 
+  # TODO Automatically trigger table creation
   CreateTableQuery:
     Type: AWS::Athena::NamedQuery
     Properties:
@@ -270,6 +273,7 @@ Resources:
 
   # Could be prepared statement with "INTERVAL ? DAY" instead.
   # LIMIT should be > unique(author) * 30 days.
+  # Cast date as string to just avoid Grafana issues interpreting dates as user's local time zone depending on settings.
   UserActivity:
     Type: AWS::Athena::NamedQuery
     Properties:
@@ -278,7 +282,7 @@ Resources:
       Name: UserActivity
       Description: "Activity (stream events) grouped by date and user"
       QueryString: >
-        SELECT date, coalesce(author, 'system'), count(*) as eventcount
+        SELECT cast(date as varchar) as date, coalesce(author, 'system') as author, count(*) as eventcount
         FROM main
         WHERE date > CURRENT_DATE - INTERVAL '30' DAY
         GROUP BY date, author
