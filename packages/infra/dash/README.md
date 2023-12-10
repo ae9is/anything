@@ -8,6 +8,14 @@ _Note: No Terraform support for non-core data sources (like grafana-athena-datas
 
 Using serverless compose as for other serverless framework packages in this repo.
 
+## AWS Athena setup
+
+Create the Athena table in the AWS console via the saved query at: Amazon Athena > Query editor > Saved queries > CreateMainTable
+
+_If you don't see any saved queries, make sure you have the right AWS region selected and that the `anything-data` package successfully deployed using serverless compose._
+
+Select the project's workspace (for ex. `anything-dev-workspace`), Data source `AwsDataCatalog`, and Database (for ex. `anything_dev`), and run the table creation query.
+
 ## Log in to AWS CLI
 
 Don't forget to login to the AWS CLI before the following steps, for example if you have setup a single sign-on profile before:
