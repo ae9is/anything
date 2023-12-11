@@ -15,6 +15,13 @@ Resources:
       LoggingConfiguration:
         DestinationBucketName: ${param:loggingBucket}
         LogFilePrefix: s3-data-logs
+      LifecycleConfiguration:
+        Rules:
+          - Id: IntTierRule
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 0
+                StorageClass: INTELLIGENT_TIERING
 
   DeliveryStreamRole:
     Type: AWS::IAM::Role
@@ -202,8 +209,8 @@ Resources:
         DestinationBucketName: ${param:loggingBucket}
         LogFilePrefix: s3-queries-logs
       LifecycleConfiguration:
-        # Lifecycle rules run once per day; clean up old queries since they're for a live dashboard.
         Rules:
+          # Lifecycle rules run once per day; clean up old queries since they're for a live dashboard
           - Id: Daily deletion
             ExpirationInDays: 1
             Status: Enabled

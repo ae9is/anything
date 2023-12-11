@@ -27,7 +27,8 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Action: 's3:GetObject*'
+          - Sid: 'Allow CloudFront access'
+            Action: 's3:GetObject*'
             Effect: Allow
             Resource: !Sub ${WebBucket.Arn}/*
             Principal:
@@ -54,6 +55,13 @@ Resources:
       OwnershipControls:
         Rules:
           - ObjectOwnership: BucketOwnerPreferred
+      LifecycleConfiguration:
+        Rules:
+          - Id: IntTierRule
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 0
+                StorageClass: INTELLIGENT_TIERING
     DeletionPolicy: Delete
 
   Distribution:
