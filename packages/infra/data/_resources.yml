@@ -190,14 +190,12 @@ Resources:
       LoggingConfiguration:
         DestinationBucketName: ${param:loggingBucket}
         LogFilePrefix: s3-queries-logs
-#      LifecycleConfiguration:
-#        # Lifecycle rules run once per day; clean up old queries since they're for a live dashboard
-#        # TODO If cleanup is enabled, don't remove table (CreateAthenaTable) metadata.
-#        #  I.e. just UserActivity/, ItemCountsByType/, Unsaved/ could be wiped daily.
-#        Rules:
-#          - Id: Daily deletion
-#            ExpirationInDays: 1
-#            Status: Enabled
+      LifecycleConfiguration:
+        # Lifecycle rules run once per day; clean up old queries since they're for a live dashboard.
+        Rules:
+          - Id: Daily deletion
+            ExpirationInDays: 1
+            Status: Enabled
 
   WorkGroup:
     Type: AWS::Athena::WorkGroup
