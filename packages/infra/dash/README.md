@@ -41,6 +41,7 @@ https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html
 1. Create a new Grafana Cloud account and setup an instance of Grafana: https://grafana.com/
 1. Install the Amazon Athena plugin for Grafana: https://grafana.com/grafana/plugins/grafana-athena-datasource/?tab=installation
 1. Home > Connections > Data sources > Add new connection > Amazon Athena
+1. Next to data source name (grafana-athena-datasource) toggle Default on
 1. Enter connection details: specify previously generated keys, region, and the ARN of the Grafana role
 1. Enter Athena details: select data source, database, and workgroup 
 1. (Optional) Enable Cache and set caching time
