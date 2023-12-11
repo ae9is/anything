@@ -289,5 +289,13 @@ Resources:
         ORDER BY date DESC LIMIT 1000;
 
 Outputs:
+  dataBucketArn:
+    Value: !GetAtt DataBucket.Arn
   queryResultsBucketArn:
     Value: !GetAtt QueryResultsBucket.Arn
+  glueDatabase:
+    Value: !Ref GlueDatabase
+  glueMainTable:
+    Value: !Ref GlueMainTable
+  athenaWorkgroup:
+    Value: !Ref WorkGroup

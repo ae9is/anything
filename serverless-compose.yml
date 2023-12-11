@@ -43,6 +43,10 @@ services:
   anything-dash:
     path: packages/infra/dash
     params:
+      dataBucketArn: ${anything-data.dataBucketArn}
       queryResultsBucketArn: ${anything-data.queryResultsBucketArn}
+      glueDatabase: ${anything-data.glueDatabase}
+      glueMainTable: ${anything-data.glueMainTable}
+      athenaWorkgroup: ${anything-data.athenaWorkgroup}
     dependsOn:
       - anything-data
