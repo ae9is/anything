@@ -1,0 +1,164 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Anything dashboard",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 14,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-athena-datasource"
+      },
+      "description": "Types and counts of current items for that type",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 14,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "connectionArgs": {
+            "catalog": "__default",
+            "database": "__default",
+            "region": "__default",
+            "resultReuseEnabled": false,
+            "resultReuseMaxAgeInMinutes": 60
+          },
+          "datasource": {
+            "type": "grafana-athena-datasource"
+          },
+          "format": 1,
+          "rawSQL": "SELECT type, count(*) as itemcount\nFROM main\nWHERE sort='v0'\nGROUP BY type ORDER BY itemcount DESC LIMIT 20;",
+          "refId": "A",
+          "table": "main"
+        }
+      ],
+      "title": "ItemCountsByType",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-athena-datasource"
+      },
+      "description": "Activity (stream events) grouped by date and user",
+      "gridPos": {
+        "h": 11,
+        "w": 14,
+        "x": 0,
+        "y": 11
+      },
+      "id": 4,
+      "options": {
+        "allData": {},
+        "config": {},
+        "data": [],
+        "imgFormat": "svg",
+        "onclick": "",
+        "resScale": 2,
+        "script": "// Enter in \"Script Editor\" for the Plotly Grafana plugin\n\n// Plotly Grafana plugin includes dayjs library\n//let now = dayjs();\n//let then = now.subtract(30, 'day');\n\nconst config = {\n  responsive: true,\n}\n\nconst bgcolor = '#181B1F';\n\nconst layout = {\n  autosize: true,\n  font: {\n    family: 'Inter, Helvetica, Arial, sans-serif',\n    color: 'white',\n  },\n  paper_bgcolor: bgcolor,\n  plot_bgcolor: bgcolor,\n  hoverlabel: {\n    bgcolor: bgcolor,\n  },\n  xaxis: {\n    // Note: Ideally would want to plot out last N days. All that seems to work is autorange with 1 day spacing.\n    //  For explicit tick values, plugin seems to refuse to show any ticks not associated with data, and plots data regardless.\n    //  Min/max range allowed doesn't seem to work either.\n    type: 'date',\n    //autorange: false,\n    //minallowed: '2023-12-01',\n    //minallowed: then.format('YYYY-MM-DD'),\n    //maxallowed: now.format('YYYY-MM-DD'),\n    //tickmode: 'linear', // 'array',\n    //tick0: then,\n    //tick0: '2023-12-01',\n    //tick0: then.format('YYYY-MM-DD'),\n    //tickvals: tickvals,\n    automargin: true,\n    //tickformat: '%a, %b %e, %y',\n    dtick: '1d',\n    tickangle: 45,\n    title: {\n      text: 'Date (UTC)',\n    },\n  },\n  yaxis: {\n    automargin: true,\n    autorange: 'max',\n    autorangeoptions: {\n      minallowed: 0,\n    },\n    title: {\n      text: 'Events',\n    },\n  },\n  showlegend: false,\n}\n\nlet dates = data.series[0].fields[0].values;\nlet authors = data.series[0].fields[1].values;\nlet events = data.series[0].fields[2].values;\nlet dataByAuth = {};\nfor (let i = 0; i < dates.length; i++) {\n  let currentAuth = authors[i];\n  let currentData = dataByAuth[currentAuth] ?? { dates: [], events: [] };\n  currentData.dates.push(dates[i]);\n  currentData.events.push(events[i]);\n  dataByAuth[currentAuth] = currentData;\n}\nlet traces = [];\nfor (const [auth, authData] of Object.entries(dataByAuth)) {\n  let trace = {\n    x: authData.dates,\n    y: authData.events,\n    mode: 'markers',\n    type: 'scatter',\n    name: auth,\n  };\n  traces.push(trace);\n}\n\nreturn { data: traces, layout, config };\n\n",
+        "yamlMode": true
+      },
+      "targets": [
+        {
+          "connectionArgs": {
+            "catalog": "__default",
+            "database": "__default",
+            "region": "__default",
+            "resultReuseEnabled": false,
+            "resultReuseMaxAgeInMinutes": 60
+          },
+          "datasource": {
+            "type": "grafana-athena-datasource"
+          },
+          "format": 1,
+          "rawSQL": "SELECT cast(date as varchar) as date, coalesce(author, 'system') as author, count(*) as events\nFROM main\nWHERE date > CURRENT_DATE - INTERVAL '30' DAY\nGROUP BY date, author\nORDER BY date DESC LIMIT 1000;",
+          "refId": "A",
+          "table": "main"
+        }
+      ],
+      "title": "UserActivity",
+      "type": "nline-plotlyjs-panel"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "utc",
+  "title": "Anything",
+  "version": 24,
+  "weekStart": ""
+}

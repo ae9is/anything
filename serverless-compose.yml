@@ -2,6 +2,12 @@
 # sls (service_name:)deploy
 # sls (service_name:)remove
 # sls refresh-outputs
+#
+# Important: To add a new param dependency without having to redeploy 
+#  everything, add the param in the providing package and re-deploy first.
+#  Then, add the new serverless package in compose below.
+#  Or else compose will fail to let you deploy changes to those packages.
+# ref: https://github.com/serverless/compose/issues/148
 services:
   anything-database:
     path: packages/infra/database
@@ -34,3 +40,13 @@ services:
     dependsOn:
       - anything-web
       - anything-database
+  anything-dash:
+    path: packages/infra/dash
+    params:
+      dataBucketArn: ${anything-data.dataBucketArn}
+      queryResultsBucketArn: ${anything-data.queryResultsBucketArn}
+      glueDatabase: ${anything-data.glueDatabase}
+      glueMainTable: ${anything-data.glueMainTable}
+      athenaWorkgroup: ${anything-data.athenaWorkgroup}
+    dependsOn:
+      - anything-data

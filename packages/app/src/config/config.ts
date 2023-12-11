@@ -12,7 +12,10 @@ export const USER_POOL_ID = 'us-east-1_1234567ab'
 export const USER_POOL_WEB_CLIENT_ID = '1234abcd1234abcd1234abcd12'
 export const OAUTH_DOMAIN = 'abcd1234.auth.us-east-1.amazoncognito.com'
 export const PRODUCTION_APP_URL = 'https://abcd1234abcd12.cloudfront.net'
-export const DASHBOARD_URL = 'https://quicksightdomain/sn/embed/share/accounts/accountid/dashboards/dashboardid?directory_alias=account_directory_alias'
+//export const DASHBOARD_URL = 'https://quicksightdomain/sn/embed/share/accounts/accountid/dashboards/dashboardid?directory_alias=account_directory_alias'
+//export const DASHBOARD_URL = 'https://<domain>.grafana.net/dashboard/snapshot/<id>'
+//export const DASHBOARD_URL = 'https://<domain>.grafana.net/public-dashboards/<id>'
+export const DASHBOARD_URL = ''
 
 const LOCAL_API_HOST = 'http://localhost:4000'
 const PRODUCTION_API_HOST = `https://${API_HOST_ID}.execute-api.${AWS_REGION}.amazonaws.com`

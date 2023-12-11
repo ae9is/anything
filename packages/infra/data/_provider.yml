@@ -15,7 +15,7 @@ environment:
   # ref: https://docs.aws.amazon.com/athena/latest/ug/glue-best-practices.html#schema-names
   NAMESPACE_ATHENA: anything_${sls:stage}
   DATA_BUCKET_NAME: anything-${sls:stage}-data
-  DATA_BUCKET_LOCATION: s3://anything-${sls:stage}-data/main/
+  DATA_BUCKET_LOCATION: s3://anything-${sls:stage}-data/main
   AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
   TRANSFORMER_FUNCTION: flattenDynamoDBTransformer
 iam:

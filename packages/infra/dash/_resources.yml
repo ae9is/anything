@@ -1,0 +1,89 @@
+Resources:
+  GrafanaUser:
+    Type: AWS::IAM::User
+    Properties:
+      Path: '/anything/users/'
+
+  GrafanaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ${self:provider.environment.NAMESPACE}-grafana-role
+      Path: '/anything/roles/' # becomes for ex: anything/roles/anything-dash-dev-grafana-role
+      Description: 'Role for Grafana dashboard'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt GrafanaUser.Arn
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: ${self:provider.environment.NAMESPACE}-grafana-policy
+          # ref: https://github.com/grafana/athena-datasource
+          # ref: https://docs.aws.amazon.com/grafana/latest/userguide/security-iam-awsmanpol.html#security-iam-awsmanpol-AmazonGrafanaAthenaAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # ref: https://docs.aws.amazon.com/athena/latest/ug/example-policies-workgroup.html
+              - Sid: "AthenaAccess"
+                Effect: "Allow"
+                Action:
+                  - "athena:ListDatabases"
+                  - "athena:ListDataCatalogs"
+                  - "athena:ListWorkGroups"
+                  - "athena:GetDatabase"
+                  - "athena:GetDataCatalog"
+                  - "athena:GetTableMetadata"
+                  - "athena:ListTableMetadata"
+                  - "athena:GetWorkGroup"
+                Resource:
+                  - !Sub arn:aws:athena:${env:AWS_REGION}:${AWS::AccountId}:*
+              - Sid: "AthenaWorkgroupAccess"
+                Effect: "Allow"
+                Action:
+                  - "athena:GetQueryExecution"
+                  - "athena:GetQueryResults"
+                  - "athena:StartQueryExecution"
+                  - "athena:StopQueryExecution"
+                Resource:
+                  - !Sub arn:aws:athena:${env:AWS_REGION}:${AWS::AccountId}:workgroup/${param:athenaWorkgroup}
+              - Sid: "GlueReadAccess"
+                Effect: "Allow"
+                Action:
+                  - "glue:GetDatabase"
+                  - "glue:GetDatabases"
+                  - "glue:GetTable"
+                  - "glue:GetTables"
+                  - "glue:GetPartition"
+                  - "glue:GetPartitions"
+                  - "glue:BatchGetPartition"
+                Resource:
+                  # ref: https://docs.aws.amazon.com/glue/latest/dg/glue-specifying-resource-arns.html
+                  - !Sub arn:aws:glue:${env:AWS_REGION}:${AWS::AccountId}:catalog
+                  - !Sub arn:aws:glue:${env:AWS_REGION}:${AWS::AccountId}:database/${param:glueDatabase}
+                  - !Sub arn:aws:glue:${env:AWS_REGION}:${AWS::AccountId}:table/${param:glueDatabase}/${param:glueMainTable}
+              - Sid: "QueryBucketAccess"
+                Effect: "Allow"
+                Action:
+                  - "s3:GetBucketLocation"
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                  - "s3:ListBucketMultipartUploads"
+                  - "s3:ListMultipartUploadParts"
+                  - "s3:AbortMultipartUpload"
+                  - "s3:PutObject"
+                Resource:
+                  - "${param:queryResultsBucketArn}"
+                  - "${param:queryResultsBucketArn}/*"
+              - Sid: "DataBucketAccess"
+                Effect: "Allow"
+                Action:
+                  - "s3:GetBucketLocation"
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                  - "s3:ListBucketMultipartUploads"
+                  - "s3:ListMultipartUploadParts"
+                Resource:
+                  - "${param:dataBucketArn}"
+                  - "${param:dataBucketArn}/*"
