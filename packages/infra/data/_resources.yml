@@ -117,7 +117,7 @@ Resources:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
         Name: ${self:provider.environment.NAMESPACE_ATHENA}
-  
+
   GlueMainTable:
     Type: AWS::Glue::Table
     Properties:
@@ -129,12 +129,8 @@ Resources:
         Retention: 0
         TableType: EXTERNAL_TABLE
         PartitionKeys:
-        - Name: year
-          Type: string
-        - Name: month
-          Type: string
-        - Name: day
-          Type: string
+        - Name: date
+          Type: date
         - Name: hour
           Type: string
         StorageDescriptor:
@@ -160,7 +156,9 @@ Resources:
           #- Name: itemIds
           #  Type: array<string>
           # ref: https://github.com/aws/aws-cdk/blob/main/packages/%40aws-cdk/aws-glue-alpha/lib/data-format.ts
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          #InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          #InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.orc.OrcInputFormat
           #OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           OutputFormat: org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat
           Compressed: True
@@ -173,6 +171,19 @@ Resources:
           BucketColumns: []
           SortColumns: []
           StoredAsSubDirectories: False
+          Location: "${self:provider.environment.DATA_BUCKET_LOCATION}/"
+        Parameters:
+          "orc.compress": "ZLIB"
+          "projection.enabled": "true"
+          "projection.date.type": "date"
+          "projection.date.format": "yyyy-MM-dd"
+          "projection.date.range": "2023-01-01,NOW"
+          "projection.date.interval": "1"
+          "projection.date.interval.unit": "DAYS"
+          "projection.hour.type": "integer"
+          "projection.hour.range": "00,23"
+          "projection.hour.digits": "2"
+          "storage.location.template": "${self:provider.environment.DATA_BUCKET_LOCATION}/${date}/${hour}/"
 
   QueryResultsBucket:
     Type: AWS::S3::Bucket
@@ -210,7 +221,9 @@ Resources:
           ExpectedBucketOwner: !Ref AWS::AccountId
           OutputLocation: !Sub s3://${QueryResultsBucket}
 
-  # TODO Automatically trigger table creation
+  # Note: Following named queries are just for reference
+
+  # Alternative, Athena-based form for creating Glue table
   CreateTableQuery:
     Type: AWS::Athena::NamedQuery
     Properties:
