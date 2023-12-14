@@ -18,6 +18,7 @@ environment:
   TABLE_LOCATION: s3://anything-${sls:stage}-${env:UNIQ}-data/main
   AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
   TRANSFORMER_FUNCTION: flattenDynamoDBTransformer
+  DEFAULT_DELIVERY_STREAM: ${param:streamTableName}
 iam:
   role:
     statements:
