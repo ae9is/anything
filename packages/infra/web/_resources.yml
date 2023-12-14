@@ -2,8 +2,6 @@ Resources:
   WebBucket:
     Type: AWS::S3::Bucket
     Properties:
-      # Needs to be unique in region
-      # BucketName: ${self:provider.environment.NAMESPACE}-web-abcde12345
       BucketName: ${self:provider.environment.NAMESPACE}-web
       PublicAccessBlockConfiguration:
         BlockPublicAcls: True

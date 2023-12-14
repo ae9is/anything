@@ -178,7 +178,7 @@ Resources:
           BucketColumns: []
           SortColumns: []
           StoredAsSubDirectories: False
-          Location: "${self:provider.environment.DATA_BUCKET_LOCATION}/"
+          Location: "${self:provider.environment.TABLE_LOCATION}/"
         Parameters:
           "orc.compress": "ZLIB"
           "projection.enabled": "true"
@@ -190,7 +190,7 @@ Resources:
           "projection.hour.type": "integer"
           "projection.hour.range": "00,23"
           "projection.hour.digits": "2"
-          "storage.location.template": "${self:provider.environment.DATA_BUCKET_LOCATION}/${date}/${hour}/"
+          "storage.location.template": "${self:provider.environment.TABLE_LOCATION}/${date}/${hour}/"
 
   QueryResultsBucket:
     Type: AWS::S3::Bucket
@@ -227,6 +227,7 @@ Resources:
         ResultConfiguration:
           ExpectedBucketOwner: !Ref AWS::AccountId
           OutputLocation: !Sub s3://${QueryResultsBucket}
+      RecursiveDeleteOption: True
 
   # Note: Following named queries are just for reference
 
@@ -240,40 +241,38 @@ Resources:
       Description: "Define main table"
       QueryString:
         # ref: https://docs.aws.amazon.com/athena/latest/ug/partition-projection-kinesis-firehose-example.html
-        !Join 
-          - ''
-          # >- means replace newlines by space (>) and strip ending newline (-)
-          - - >-
-              CREATE EXTERNAL TABLE IF NOT EXISTS main (
-                id string,
-                sort string,
-                modified timestamp,
-                author string,
-                type string,
-                ctype string,
-                deleted boolean,
-                currentVersion int,
-                eventName string
-              )
-              PARTITIONED BY (
-                date date,
-                hour string
-              )
-              STORED AS ORC
-              LOCATION "${self:provider.environment.DATA_BUCKET_LOCATION}/"
-              TBLPROPERTIES (
-                "orc.compress" = "ZLIB",
-                "projection.enabled" = "true",
-                "projection.date.type" = "date",
-                "projection.date.format" = "yyyy-MM-dd",
-                "projection.date.range" = "2023-01-01,NOW",
-                "projection.date.interval" = "1",
-                "projection.date.interval.unit" = "DAYS",
-                "projection.hour.type" = "integer",
-                "projection.hour.range" = "00,23",
-                "projection.hour.digits" = "2",
-                "storage.location.template" = "${self:provider.environment.DATA_BUCKET_LOCATION}/${date}/${hour}/"
-              )
+        # >- means replace newlines by space (>) and strip ending newline (-)
+        >-
+          CREATE EXTERNAL TABLE IF NOT EXISTS main (
+            id string,
+            sort string,
+            modified timestamp,
+            author string,
+            type string,
+            ctype string,
+            deleted boolean,
+            currentVersion int,
+            eventName string
+          )
+          PARTITIONED BY (
+            date date,
+            hour string
+          )
+          STORED AS ORC
+          LOCATION "${self:provider.environment.TABLE_LOCATION}/"
+          TBLPROPERTIES (
+            "orc.compress" = "ZLIB",
+            "projection.enabled" = "true",
+            "projection.date.type" = "date",
+            "projection.date.format" = "yyyy-MM-dd",
+            "projection.date.range" = "2023-01-01,NOW",
+            "projection.date.interval" = "1",
+            "projection.date.interval.unit" = "DAYS",
+            "projection.hour.type" = "integer",
+            "projection.hour.range" = "00,23",
+            "projection.hour.digits" = "2",
+            "storage.location.template" = "${self:provider.environment.TABLE_LOCATION}/${date}/${hour}/"
+          )
 
   # Could be a prepared statement with "LIMIT ?" instead.
   ItemCountsByType:

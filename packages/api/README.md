@@ -180,7 +180,7 @@ For example (using linux and IAM identity center as the user directory):
     Under application properties, to enable sign-on from the AWS apps portal you can set the following...
 
     Application start URL:
-    `https://<cognito auth domain>.auth.us-east-1.amazoncognito.com/oauth2/authorize?response_type=code&client_id=<web app client id>&redirect_uri=<app url>&identity_provider=anything-dev-user-pool-idp&scope=openid+email+profile+aws.cognito.signin.user.admin`
+    `https://<cognito auth domain>.auth.us-east-1.amazoncognito.com/oauth2/authorize?response_type=code&client_id=<web app client id>&redirect_uri=<app url>&identity_provider=<cognitor user pool idp name>&scope=openid+email+profile+aws.cognito.signin.user.admin`
 
     Relay state:
     `<app url>`

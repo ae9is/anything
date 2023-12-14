@@ -9,8 +9,8 @@
     "lint": "next lint",
     "start": "next start",
     "update-packages": "ncu -u",
-    "s3-empty-bucket": "aws s3 rm s3://${S3_BUCKET:anything-dev-web} --recursive",
-    "s3-publish-to-bucket": "aws s3 sync dist s3://${S3_BUCKET:anything-dev-web}",
+    "s3-empty-bucket": "aws s3 rm s3://${S3_APP_BUCKET:anything-dev-web} --recursive",
+    "s3-publish-to-bucket": "aws s3 sync dist s3://${S3_APP_BUCKET:anything-dev-web}",
     "s3-build-and-publish": "run-z build s3-publish-to-bucket"
   },
   "dependencies": {
