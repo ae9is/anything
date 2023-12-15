@@ -13,7 +13,7 @@ environment:
 apiGateway:
   # ref: https://www.serverless.com/framework/docs/providers/aws/events/apigateway#providing-a-custom-stage-name
   stage: 'v1'
-http:
+httpApi:
   # ref: https://www.serverless.com/framework/docs/providers/aws/events/http-api#cors-setup
 #  cors: true
 #  cors:
