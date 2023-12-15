@@ -1,6 +1,6 @@
 import { APIGatewayProxyEventQueryStringParameters, APIGatewayProxyEventV2 } from 'aws-lambda'
 import logger from 'logger'
-import { middyfy } from '../../lib/middy'
+import { middyfy, middyfyWithBody } from '../../lib/middy'
 import {
   changeBatch,
   changeById,
@@ -74,7 +74,7 @@ async function resolveDeleteItem(id: string) {
   return deleteItm(id)
 }
 
-export const upsertItem = middyfy(async (event: APIGatewayProxyEventV2) => {
+export const upsertItem = middyfyWithBody(async (event: APIGatewayProxyEventV2) => {
   return changeById(event, resolveUpsertItem)
 })
 
@@ -82,7 +82,7 @@ async function resolveUpsertItem(id: string, body: any) {
   return upsertItm(id, body)
 }
 
-export const upsertBatchItems = middyfy(async (event: APIGatewayProxyEventV2) => {
+export const upsertBatchItems = middyfyWithBody(async (event: APIGatewayProxyEventV2) => {
   return changeBatch(event, resolveUpsertBatchItems)
 })
 
