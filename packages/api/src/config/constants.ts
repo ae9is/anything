@@ -24,3 +24,4 @@ export const LOCAL_API_HOST = `http://localhost:${API_PORT}`
 const PRODUCTION_APP_URL = process.env.PRODUCTION_APP_URL || '' // 'https://<subdomain>.cloudfront.net'
 const LOCAL_APP_URL = 'http://localhost:3000'
 export const ORIGIN = PRODUCTION_APP_URL || LOCAL_APP_URL
+export const NAMESPACE = process.env.NAMESPACE || ''
