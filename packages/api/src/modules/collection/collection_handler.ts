@@ -1,5 +1,5 @@
 import { APIGatewayProxyEventQueryStringParameters, APIGatewayProxyEventV2 } from 'aws-lambda'
-import { middyfy } from '../../lib/middy'
+import { middyfy, middyfyWithBody } from '../../lib/middy'
 import { deleteCollectionItems, getCollectionById, getCollectionsByType, putCollection, putCollectionItems } from './collection.store'
 import { changeById, deleteById, getById, getByIdAndQuery, getPaginationParamsFromQuery } from '../../lib/routing'
 import { deleteCollection as deleteColl } from './collection.store'
@@ -21,7 +21,7 @@ async function resolveCollectionById(id: string) {
   return getCollectionById(id)
 }
 
-export const upsertCollection = middyfy(async (event: APIGatewayProxyEventV2) => {
+export const upsertCollection = middyfyWithBody(async (event: APIGatewayProxyEventV2) => {
   return changeById(event, resolveUpsertCollection)
 })
 
@@ -39,7 +39,7 @@ async function resolveDeleteCollection(id: string) {
   return deleteColl(id)
 }
 
-export const addItemsToCollection = middyfy(async (event: APIGatewayProxyEventV2) => {
+export const addItemsToCollection = middyfyWithBody(async (event: APIGatewayProxyEventV2) => {
   return changeById(event, resolveAddItemsToCollection)
 })
 
@@ -48,7 +48,7 @@ async function resolveAddItemsToCollection(id: string, body: any) {
   return putCollectionItems(id, itemIds)
 }
 
-export const removeItemsFromCollection = middyfy(async (event: APIGatewayProxyEventV2) => {
+export const removeItemsFromCollection = middyfyWithBody(async (event: APIGatewayProxyEventV2) => {
   return changeById(event, resolveRemoveItemsFromCollection)
 })
 

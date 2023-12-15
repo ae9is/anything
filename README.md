@@ -95,18 +95,19 @@ C4Container
 
 Edit the environment variables in .env as appropriate and load using [direnv](https://direnv.net/).
 
-
 Refer to `packages/api/README.md` and `packages/app/README.md` for setting up the serverless api and web app.
 
-After you've setup the api and app, you can spin up all projects at once with Turborepo using:
+After you've setup the api and app for local development, you should be able to spin up both projects at once with Turborepo using:
 
 ```sh
 npm run dev
 ```
 
+Note that the data analytics pipeline and dashboard can't be emulated locally and require cloud deployment of resources.
+
 ## Deployment
 
-Refer to the readmes for `packages/api` and `packages/app` to deploy the backend and host the web app on the client.
+Refer to the readmes for `packages/api` and `packages/app` to deploy the backend and host the client web app.
 
 ## Monorepo structure
 

@@ -17,8 +17,8 @@ export const PRODUCTION_APP_URL = 'https://abcd1234abcd12.cloudfront.net'
 //export const DASHBOARD_URL = 'https://<domain>.grafana.net/public-dashboards/<id>'
 export const DASHBOARD_URL = ''
 
-const LOCAL_API_HOST = 'http://localhost:4000'
-const PRODUCTION_API_HOST = `https://${API_HOST_ID}.execute-api.${AWS_REGION}.amazonaws.com`
+const LOCAL_API_HOST = `http://localhost:4000/${API_VERSION}`
+const PRODUCTION_API_HOST = `https://${API_HOST_ID}.execute-api.${AWS_REGION}.amazonaws.com/${API_VERSION}`
 export const API_HOST = useLocalApi ? LOCAL_API_HOST : PRODUCTION_API_HOST
 export const COGNITO_ID = `cognito-idp.${AWS_REGION}.amazonaws.com/${USER_POOL_ID}`
 export const LOCAL_APP_URL = 'http://localhost:3000'

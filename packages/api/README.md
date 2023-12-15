@@ -170,7 +170,7 @@ For example (using linux and IAM identity center as the user directory):
 
 7. Set `AWS_PROFILE` in .env (or if using 'default' profile unset `AWS_PROFILE`)
 
-8. At this point, the project's deploy command `npm run sls-deploy` should hopefully work. Your mileage may vary with serverless offline.
+8. At this point, the project's deploy command `sls deploy` from the repository root folder should hopefully work. Your mileage may vary using serverless offline just to test `packages/api` locally.
 
 9. Follow the following guide to add the Cognito user pool you just deployed as a trusted application in your IAM Identity Center SAML settings:
     https://repost.aws/knowledge-center/cognito-user-pool-iam-integration
@@ -180,15 +180,27 @@ For example (using linux and IAM identity center as the user directory):
     Under application properties, to enable sign-on from the AWS apps portal you can set the following...
 
     Application start URL:
-    `https://<cognito auth domain>.auth.us-east-1.amazoncognito.com/oauth2/authorize?response_type=code&client_id=<web app client id>&redirect_uri=<app url>&identity_provider=anything-dev-user-pool-idp&scope=openid+email+profile+aws.cognito.signin.user.admin`
+    `https://<cognito_auth_domain>.auth.<aws_region>.amazoncognito.com/oauth2/authorize?response_type=code&client_id=<web_app_client_id>&redirect_uri=<app_url>&identity_provider=<cognito_user_pool_idp>&scope=openid+email+profile+aws.cognito.signin.user.admin`
 
     Relay state:
-    `<app url>`
+    `<app_url>`
 
-    Where app url is one of:
-    - _(development)_ `http://localhost:3000`
-    - _(production)_ `https://<app_cloudfront_id>.cloudfront.net`
+    The default values are:
+    - <aws_region> - us-east-1
+    - <cognito_auth_domain> - anything-$stage-$uniq-auth
+    - <cognito_user_pool_idp> - anything-$stage-$uniq-user-pool-idp
+
+    For <web_app_client_id>, you'll need to grab the "Client ID" field from:
+    `User pools > anything-$stage-$uniq-user-pool > App integration > App clients > anything-$stage-$uniq-user-pool-client`
+
+    Note that <app_url> varies depending on development mode; it's wherever you want to redirect back to after sign-in:
+    - _(local development)_ `http://localhost:3000`
+    - _(remote development / production)_ `https://<app_cloudfront_id>.cloudfront.net`
+
+    More reference: https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-SAML-session-initiation.html#bookmark-applications-in-idp-portal
 
 10. For future deployment or local development sessions:
     - Make sure to sign on again with the aws cli as needed: `aws sso login --sso-session SESSION_NAME`
     - Copy short term credentials to `~/.aws/credentials`, if they've changed
+
+11. A note on deploying to production (i.e. hosted web app instead of local web development): the CloudFront distribution requires the API endpoint, and the API CORS handler (when configured for the hosted web app) needs the CloudFront distribution url. So after deploying all stacks (using `sls deploy`), uncomment and set `PRODUCTION_APP_URL` in .env and redeploy once to fix the API's CORS config.

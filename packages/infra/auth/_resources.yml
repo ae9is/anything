@@ -31,10 +31,9 @@ Resources:
     Type: AWS::Cognito::UserPoolDomain
     Properties: 
       UserPoolId: !Ref UserPool
-      # 1-63 chars. Lowercase letters, numbers, and hyphens. No hyper for first or last character. Periods to separate subdomain names.
+      # 1-63 chars. Lowercase letters, numbers, and hyphens. No hyphen for first or last character. Periods to separate subdomain names.
       # Pre-check availability from the console, pick something long and random to avoid collision, or use your own custom domain.
-      #Domain: abcdefgh12345678
-      Domain: anything-auth
+      Domain: ${self:provider.environment.NAMESPACE}-auth
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient

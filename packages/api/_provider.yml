@@ -1,18 +1,19 @@
 name: aws
 runtime: nodejs18.x
-#memory: 256
+#memorySize: 256
 stage: ${env:STAGE, 'dev'}
 region: ${env:AWS_REGION}
 # Opt in to CloudFormation direct deployments
 # ref: https://www.serverless.com/framework/docs/providers/aws/guide/deploying
 deploymentMethod: direct
 environment:
-  NAMESPACE: ${self:service}-${sls:stage}
+  NAMESPACE: ${self:service}-${sls:stage}-${env:UNIQ}
   AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+  PRODUCTION_APP_URL: ${env:PRODUCTION_APP_URL, ''}
 apiGateway:
   # ref: https://www.serverless.com/framework/docs/providers/aws/events/apigateway#providing-a-custom-stage-name
   stage: 'v1'
-http:
+httpApi:
   # ref: https://www.serverless.com/framework/docs/providers/aws/events/http-api#cors-setup
 #  cors: true
 #  cors:
