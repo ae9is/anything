@@ -16,7 +16,7 @@ describe('Routing tests', function () {
       router.defaultRouting.bind(undefined),
       function (err: string | null, data: any) {
         if (err) {
-          assert.fail(err, undefined, 'Unexpected Error')
+          assert.equal(err, undefined, 'Unexpected Error')
         } else {
           // check the record count
           it('Returns the correct number of records', function () {
@@ -32,7 +32,7 @@ describe('Routing tests', function () {
           it('Returns a single destination', function () {
             const keyLen = Object.keys(data).length
             if (keyLen > 1) {
-              assert.fail(keyLen, 1, 'Unexpected number of delivery streams')
+              assert.equal(keyLen, 1, 'Unexpected number of delivery streams')
             }
           })
           it('Returns the correct delivery stream', function () {

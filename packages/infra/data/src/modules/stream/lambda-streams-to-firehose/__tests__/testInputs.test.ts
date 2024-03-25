@@ -12,7 +12,7 @@ describe('Input Data Tests', function () {
     const record = jsonFragmentString
     transformer.addNewlineTransformer(record, function (err: string | null, data: any) {
       if (err) {
-        assert.fail(err, undefined, 'Unexpected Error')
+        assert.equal(err, undefined, 'Unexpected Error')
       } else {
         it('Does not add escape sequence', function () {
           assert.equal(data.toString(c.targetEncoding), record + '\n', ' The data got modified ')
@@ -24,7 +24,7 @@ describe('Input Data Tests', function () {
     const record = csvFragment
     transformer.addNewlineTransformer(record, function (err: string | null, data: any) {
       if (err) {
-        assert.fail(err, undefined, 'Unexpected Error')
+        assert.equal(err, undefined, 'Unexpected Error')
       } else {
         it('Verify that the CSV data is right', function () {
           assert.equal(
@@ -40,7 +40,7 @@ describe('Input Data Tests', function () {
     const record = marshalledJsonFragment
     transformer.unmarshallDynamoDBTransformer(record, function (err: string | null, data: any) {
       if (err) {
-        assert.fail(err, undefined, 'Unexpected Error')
+        assert.equal(err, undefined, 'Unexpected Error')
       } else {
         it('Unmarshalls data correctly', function () {
           assert.equal(data.toString(c.targetEncoding), JSON.stringify(jsonFragment) + '\n', ' The data got modified ')
