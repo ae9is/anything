@@ -21,7 +21,13 @@ limitations under the License.
 import * as deagg from 'aws-kinesis-agg'
 import * as async from 'async'
 import { DynamoDBRecord, DynamoDBStreamEvent } from 'aws-lambda'
-import { FirehoseClient, PutRecordBatchCommand, DescribeDeliveryStreamCommand } from '@aws-sdk/client-firehose'
+import {
+  FirehoseClient,
+  PutRecordBatchCommand,
+  DescribeDeliveryStreamCommand,
+  PutRecordBatchCommandInput,
+  _Record,
+} from '@aws-sdk/client-firehose'
 import { KinesisClient, ListTagsForStreamCommand } from '@aws-sdk/client-kinesis'
 
 import { notEmpty, stringify } from 'utils'
@@ -46,9 +52,9 @@ import * as transform from './transformer'
  * create the transformer instance - change this to be regexToDelimter, or your
  * own new function
  */
-let useTransformer: any
+let useTransformer: c.transformerRegistryKey
 
-export function setTransformer(transformer: any) {
+export function setTransformer(transformer: c.transformerRegistryKey) {
   useTransformer = transformer
 }
 
@@ -105,7 +111,7 @@ export async function init(callback?: (args: any) => Promise<void>) {
     if (debug) {
       console.log('AWS Streams to Firehose Forwarder v' + pjson.version + ' in ' + setRegion)
     }
-    transform.setupTransformer(async function (err: string, transformer: any) {
+    transform.setupTransformer(async function (err: string, transformer: c.transformerRegistryKey) {
       if (err) {
         if (callback) {
           await callback(err)
@@ -242,7 +248,7 @@ export async function handler(event: DynamoDBStreamEvent, context: any) {
     // terminate if there were any non process reasons
     finish(noProcessStatus, c.ERROR, noProcessReason)
   } else {
-    init(async function (err: string) {
+    await init(async function (err: string) {
       if (err) {
         finish(err, c.ERROR, 'Error')
       } else {
@@ -431,7 +437,7 @@ export interface BatchItem {
  * are calculated to be compatible with the array.slice() function which uses a
  * non-inclusive upper bound
  */
-export function getBatchRanges(records: any): BatchItem[] {
+export function getBatchRanges(records: Uint8Array[]): BatchItem[] {
   const batches = []
   let currentLowOffset = 0
   let batchCurrentBytes = 0
@@ -441,7 +447,7 @@ export function getBatchRanges(records: any): BatchItem[] {
   for (let i = 0; i < records.length; i++) {
     // need to calculate the total record size for the call to Firehose on
     // the basis of of non-base64 encoded values
-    recordSize = Buffer.byteLength(records[i].toString(c.targetEncoding), c.targetEncoding)
+    recordSize = Buffer.byteLength(records[i].toString(), c.targetEncoding)
     // batch always has 1 entry, so add it first
     batchCurrentBytes += recordSize
     batchCurrentCount += 1
@@ -449,7 +455,7 @@ export function getBatchRanges(records: any): BatchItem[] {
     if (i === records.length - 1) {
       nextRecordSize = 0
     } else {
-      nextRecordSize = Buffer.byteLength(records[i + 1].toString(c.targetEncoding), c.targetEncoding)
+      nextRecordSize = Buffer.byteLength(records[i + 1].toString(), c.targetEncoding)
     }
     // generate a new batch marker every 4MB or 500 records, whichever comes
     // first
@@ -603,10 +609,10 @@ export function processEvent(event: DynamoDBStreamEvent, serviceName: string, st
  * function which forwards a batch of kinesis records to a firehose delivery
  * stream
  */
-export async function writeToFirehose(firehoseBatch: any, streamName: string, deliveryStreamName: string, callback: (args?: any) => void, retries?: number) {
+export async function writeToFirehose(firehoseBatch: _Record[] | undefined, streamName: string, deliveryStreamName: string, callback: (args?: any) => void, retries?: number) {
   const numRetries = retries ?? 0
   // write the batch to firehose with putRecordBatch
-  const putRecordBatchParams = {
+  const putRecordBatchParams: PutRecordBatchCommandInput = {
     DeliveryStreamName: deliveryStreamName.substring(0, 64),
     Records: firehoseBatch,
   }
@@ -624,15 +630,15 @@ export async function writeToFirehose(firehoseBatch: any, streamName: string, de
         'Failed to write ' +
           resp.FailedPutCount +
           '/' +
-          firehoseBatch.length +
+          firehoseBatch?.length ?? 0 +
           ' records. Retrying to write...'
       )
       if (numRetries < c.MAX_RETRY_ON_FAILED_PUT) {
         // extract the failed records
-        const failedBatch: any[] = []
+        const failedBatch: _Record[] = []
         resp.RequestResponses?.map(function (item: any, index: number) {
-          if (item.hasOwnProperty('ErrorCode')) {
-            failedBatch.push(firehoseBatch[index])
+          if (item.hasOwnProperty('ErrorCode') && firehoseBatch?.[index]) {
+            failedBatch.push(firehoseBatch?.[index])
           }
         })
         setTimeout(
@@ -661,7 +667,7 @@ export async function writeToFirehose(firehoseBatch: any, streamName: string, de
         const elapsedMs = new Date().getTime() - startTime
         console.log(
           'Successfully wrote ' +
-            firehoseBatch.length +
+            firehoseBatch?.length ?? 0 +
             ' records to Firehose ' +
             deliveryStreamName +
             ' in ' +
@@ -681,7 +687,7 @@ export async function writeToFirehose(firehoseBatch: any, streamName: string, de
  * function which handles the output of the defined transformation on each
  * record.
  */
-export async function processFinalRecords(records: any, streamName: string, deliveryStreamName: string, callback: any) {
+export async function processFinalRecords(records: Uint8Array[], streamName: string, deliveryStreamName: string, callback: any) {
   if (debug) {
     console.log('Delivering records to destination Streams')
   }
@@ -715,10 +721,10 @@ export async function processFinalRecords(records: any, streamName: string, deli
       // firehose
       const processRecords = records.slice(item.lowOffset, item.highOffset)
       // decorate the array for the Firehose API
-      const decorated: any[] = []
-      processRecords.map(function (item: any) {
+      const decorated: _Record[] = []
+      processRecords.map(function (item: Uint8Array | undefined) {
         decorated.push({
-          Data: new TextEncoder().encode(stringify(item)),
+          Data: item,
         })
       })
       await writeToFirehose(decorated, streamName, deliveryStreamName, function (err: string) {
