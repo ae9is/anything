@@ -19,10 +19,10 @@ export enum transformerRegistry {
   doNothingTransformer = 'doNothingTransformer',
   addNewlineTransformer = 'addNewlineTransformer',
   jsonToStringTransformer = 'jsonToStringTransformer',
-  regexToDelimTextTransformer = 'regexToDelimTextTransformer',
   unmarshallDynamoDBTransformer = 'unmarshallDynamoDBTransformer',
   flattenDynamoDBTransformer = 'flattenDynamoDBTransformer',
 }
+export type transformerRegistryKey = keyof typeof transformerRegistry
 export enum supportedDatatypeTransformerMappings {
   JSON = transformerRegistry.jsonToStringTransformer,
   CSV = transformerRegistry.addNewlineTransformer,

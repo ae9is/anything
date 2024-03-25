@@ -43,7 +43,7 @@ describe('Input Data Tests', function () {
         assert.equal(err, undefined, 'Unexpected Error')
       } else {
         it('Unmarshalls data correctly', function () {
-          assert.equal(data.toString(c.targetEncoding), JSON.stringify(jsonFragment) + '\n', ' The data got modified ')
+          assert.equal(data.toString(c.targetEncoding), JSON.stringify(jsonFragment) + '\n', ' The data was not unmarshalled correctly')
         })
       }
     })

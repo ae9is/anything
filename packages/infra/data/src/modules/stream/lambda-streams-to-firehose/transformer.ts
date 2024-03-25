@@ -39,7 +39,6 @@ export function doNothingTransformer(data: any, callback: any) {
  */
 export function regexToDelimiter(regex: RegExp | string, delimiter: string, data: any, callback: (msg?: string, buf?: any) => void) {
   const tokens = JSON.stringify(data).match(regex)
-
   if (tokens) {
     // emitting a new buffer as delimited text whose contents are the regex
     // character classes
@@ -99,27 +98,6 @@ function filter(object: any, filterKeys: string[]) {
   }, {})
 }
 
-// Alias for current type for String.match(match: { ... })
-type Matcher = { [Symbol.match](string: string): RegExpMatchArray | null; }
-
-/**
- * Example transformer that converts a regular expression to delimited text
- * 
- * Example regex transformer:
- *  var transformer = exports.regexToDelimTextTransformer.bind(undefined, /(myregex) (.*)/, "|");
- */
-export function regexToDelimTextTransformer(regex: Matcher, delimiter: string, data: any, callback: any) {
-  var tokens = JSON.stringify(data).match(regex)
-
-  if (tokens) {
-    // emitting a new buffer as delimited text whose contents are the regex
-    // character classes
-    callback(null, Buffer.from(tokens.slice(1).join(delimiter) + '\n', c.targetEncoding))
-  } else {
-    callback('Configured Regular Expression does not match any tokens', null)
-  }
-}
-
 export function transformRecords(serviceName: string, transformer: any, userRecords: any, callback: any) {
   map(
     userRecords,
@@ -161,23 +139,25 @@ export function transformRecords(serviceName: string, transformer: any, userReco
   )
 }
 
-export async function setupTransformer(this: any, callback?: (...args: any[]) => Promise<void>) {
+export async function setupTransformer(callback?: (...args: any[]) => Promise<void>) {
   // Set the default transformer
   let t = jsonToStringTransformer.bind(undefined)
   // Check if the transformer has been overridden by environment settings
-  if (process.env[c.TRANSFORMER_FUNCTION_ENV]) {
-    console.log(process.env[c.TRANSFORMER_FUNCTION_ENV])
+  const TRANSFORMER_FUNCTION_ENV: string | undefined = process.env[c.TRANSFORMER_FUNCTION_ENV]
+  let TRANSFORMER_FUNCTION: keyof typeof transformerFunctions = 'jsonToStringTransformer'
+  if (TRANSFORMER_FUNCTION_ENV) {
     let found = false
     for (const [key, value] of Object.entries(c.transformerRegistry)) {
-      if (process.env[c.TRANSFORMER_FUNCTION_ENV] === value) {
+      if (TRANSFORMER_FUNCTION_ENV === value) {
         found = true
+        TRANSFORMER_FUNCTION = TRANSFORMER_FUNCTION_ENV as keyof typeof c.transformerRegistry
       }
     }
     if (!found) {
       if (callback) {
         await callback(
           'Configured Transformer function ' +
-            process.env[c.TRANSFORMER_FUNCTION_ENV] +
+            TRANSFORMER_FUNCTION +
             ' is not a valid transformation method in the transformer.js module'
         )
       }
@@ -186,7 +166,7 @@ export async function setupTransformer(this: any, callback?: (...args: any[]) =>
         console.log('Setting data transformer based on Transformer Override configuration')
       }
       // Dynamically bind in the transformer function
-      t = this[process.env[c.TRANSFORMER_FUNCTION_ENV]].bind(undefined)
+      t = transformerFunctions[TRANSFORMER_FUNCTION].bind(undefined)
     }
   } else {
     if (debug) {
@@ -209,7 +189,7 @@ export async function setupTransformer(this: any, callback?: (...args: any[]) =>
           console.log('Setting data transformer based on Stream Datatype configuration')
         }
         const supportedDatatype = c.supportedDatatypeTransformerMappings[STREAM_DATATYPE]
-        t = this[c.transformerRegistry[supportedDatatype]].bind(undefined)
+        t = transformerFunctions[supportedDatatype].bind(undefined)
       }
     } else {
       if (debug) {
@@ -224,3 +204,14 @@ export async function setupTransformer(this: any, callback?: (...args: any[]) =>
     await callback(null, t)
   }
 }
+
+const transformerFunctions = {
+  'doNothingTransformer': doNothingTransformer,
+  'addNewlineTransformer': addNewlineTransformer,
+  'jsonToStringTransformer': jsonToStringTransformer,
+  'unmarshallDynamoDBTransformer': unmarshallDynamoDBTransformer,
+  'flattenDynamoDBTransformer': flattenDynamoDBTransformer,
+}
+
+type transformerFunctionKeys = keyof typeof transformerFunctions
+type transformerFunction = typeof transformerFunctions[transformerFunctionKeys]

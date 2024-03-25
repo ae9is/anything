@@ -8,7 +8,6 @@ describe('Transformer Tests', function () {
     delete process.env[c.STREAM_DATATYPE_ENV]
     delete process.env[c.TRANSFORMER_FUNCTION_ENV]
   })
-
   describe('- Verify the default transformer', function () {
     it(': Is using the default transformer', function () {
       transform.setupTransformer(async function (err: string | null, t: any) {
@@ -24,24 +23,6 @@ describe('Transformer Tests', function () {
       })
     })
   })
-
-  describe('- Verify configuring the transformer', function () {
-    it(': Is using the configured transformer', function () {
-      process.env[c.TRANSFORMER_FUNCTION_ENV] = c.transformerRegistry.regexToDelimTextTransformer
-      transform.setupTransformer(async function (err: string | null, t: any) {
-        if (err) {
-          assert.fail(err)
-        } else {
-          assert.equal(
-            t.name,
-            'bound ' + c.transformerRegistry.regexToDelimTextTransformer,
-            ' Transformer Incorrectly Set '
-          )
-        }
-      })
-    })
-  })
-
   describe('- Verify configuring the stream datatype CSV', function () {
     it(': Is using the configured transformer', function () {
       process.env[c.STREAM_DATATYPE_ENV] = 'CSV'
@@ -58,7 +39,6 @@ describe('Transformer Tests', function () {
       })
     })
   })
-
   describe('- Verify configuring the stream datatype CSV with newlines', function () {
     it(': Is using the configured transformer', function () {
       process.env[c.STREAM_DATATYPE_ENV] = 'CSV-WITH-NEWLINES'
@@ -75,7 +55,6 @@ describe('Transformer Tests', function () {
       })
     })
   })
-
   describe('- Verify configuring the stream datatype BINARY', function () {
     it(': Is using the configured transformer', function () {
       process.env[c.STREAM_DATATYPE_ENV] = 'BINARY'
