@@ -11,7 +11,7 @@ describe('Transformer Tests', function () {
 
   describe('- Verify the default transformer', function () {
     it(': Is using the default transformer', function () {
-      transform.setupTransformer(function (err: string | null, t: any) {
+      transform.setupTransformer(async function (err: string | null, t: any) {
         if (err) {
           assert.fail(err)
         } else {
@@ -28,7 +28,7 @@ describe('Transformer Tests', function () {
   describe('- Verify configuring the transformer', function () {
     it(': Is using the configured transformer', function () {
       process.env[c.TRANSFORMER_FUNCTION_ENV] = c.transformerRegistry.regexToDelimTextTransformer
-      transform.setupTransformer(function (err: string | null, t: any) {
+      transform.setupTransformer(async function (err: string | null, t: any) {
         if (err) {
           assert.fail(err)
         } else {
@@ -45,7 +45,7 @@ describe('Transformer Tests', function () {
   describe('- Verify configuring the stream datatype CSV', function () {
     it(': Is using the configured transformer', function () {
       process.env[c.STREAM_DATATYPE_ENV] = 'CSV'
-      transform.setupTransformer(function (err: string | null, t: any) {
+      transform.setupTransformer(async function (err: string | null, t: any) {
         if (err) {
           assert.fail(err)
         } else {
@@ -62,7 +62,7 @@ describe('Transformer Tests', function () {
   describe('- Verify configuring the stream datatype CSV with newlines', function () {
     it(': Is using the configured transformer', function () {
       process.env[c.STREAM_DATATYPE_ENV] = 'CSV-WITH-NEWLINES'
-      transform.setupTransformer(function (err: string | null, t: any) {
+      transform.setupTransformer(async function (err: string | null, t: any) {
         if (err) {
           assert.fail(err)
         } else {
@@ -79,7 +79,7 @@ describe('Transformer Tests', function () {
   describe('- Verify configuring the stream datatype BINARY', function () {
     it(': Is using the configured transformer', function () {
       process.env[c.STREAM_DATATYPE_ENV] = 'BINARY'
-      transform.setupTransformer(function (err: string | null, t: any) {
+      transform.setupTransformer(async function (err: string | null, t: any) {
         if (err) {
           assert.fail(err)
         } else {
