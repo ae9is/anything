@@ -1,8 +1,5 @@
 name: aws
-#runtime: nodejs18.x
-# Need to rewrite handler or use node 16, as node 18 runtime doesn't have 
-#  aws-sdk (i.e. AWS SDK v2) bundled
-runtime: nodejs16.x
+runtime: nodejs18.x
 #memorySize: 256
 stage: ${env:STAGE, 'dev'}
 region: ${env:AWS_REGION}
