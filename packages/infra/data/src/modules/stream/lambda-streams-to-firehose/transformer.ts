@@ -9,38 +9,51 @@
  * completed. If supplied callback is with a null/undefined output (such as
  * filtering) then nothing will be sent to Firehose
  */
-var aws = require('aws-sdk')
-var async = require('async')
-require('./constants')
 
-var debug = process.env.DEBUG || false
+import { map } from 'async'
+import * as aws from 'aws-sdk'
+import * as c from './constants'
 
-function addNewlineTransformer(data, callback) {
+const debug = process.env.DEBUG || false
+
+export function addNewlineTransformer(data: any, callback: any) {
   // emitting a new buffer as text with newline
-  callback(null, Buffer.from(data + '\n', targetEncoding))
+  callback(null, Buffer.from(data + '\n', c.targetEncoding))
 }
-exports.addNewlineTransformer = addNewlineTransformer
 
 /** Convert JSON data to its String representation */
-function jsonToStringTransformer(data, callback) {
+export function jsonToStringTransformer(data: any, callback: any) {
   // emitting a new buffer as text with newline
-  callback(null, Buffer.from(JSON.stringify(data) + '\n', targetEncoding))
+  callback(null, Buffer.from(JSON.stringify(data) + '\n', c.targetEncoding))
 }
-exports.jsonToStringTransformer = jsonToStringTransformer
 
-/** Literally nothing at all transformer - just wrap the object in a buffer */
-function doNothingTransformer(data, callback) {
+/** literally nothing at all transformer - just wrap the object in a buffer */
+export function doNothingTransformer(data: any, callback: any) {
   // emitting a new buffer as text with newline
-  callback(null, Buffer.from(data, targetEncoding))
+  callback(null, Buffer.from(data, c.targetEncoding))
 }
-exports.doNothingTransformer = doNothingTransformer
+
+/**
+ * Example transformer that converts a regular expression to delimited text
+ */
+export function regexToDelimiter(regex: RegExp | string, delimiter: string, data: any, callback: (msg?: string, buf?: any) => void) {
+  const tokens = JSON.stringify(data).match(regex)
+
+  if (tokens) {
+    // emitting a new buffer as delimited text whose contents are the regex
+    // character classes
+    callback(undefined, Buffer.from(tokens.slice(1).join(delimiter) + '\n'))
+  } else {
+    callback('Configured Regular Expression does not match any tokens', null)
+  }
+}
 
 // DynamoDB Streams emit typed low-level JSON data, like: {"key":{"S":"value"}}
 // This transformer unboxes that typing.
-function unmarshallDynamoDBTransformer(data, callback) {
+export function unmarshallDynamoDBTransformer(data: any, callback: any) {
   let json = data
   if (typeof data === 'string' || data instanceof String) {
-    json = JSON.parse(data)
+    json = JSON.parse(data.toString())
   }
   const keys = data?.Keys && unmarshall(data.Keys)
   const newImage = data?.NewImage && unmarshall(data.NewImage)
@@ -52,11 +65,10 @@ function unmarshallDynamoDBTransformer(data, callback) {
   if (oldImage) {
     unmarshalled.OldImage = oldImage
   }
-  callback(null, Buffer.from(JSON.stringify(unmarshalled) + '\n', targetEncoding))
+  callback(null, Buffer.from(JSON.stringify(unmarshalled) + '\n', c.targetEncoding))
 }
-exports.unmarshallDynamoDBTransformer = unmarshallDynamoDBTransformer
 
-function unmarshall(json) {
+function unmarshall(json: any) {
   // Data must be JSON, not string
   return aws.DynamoDB.Converter.unmarshall(json)
 }
@@ -67,30 +79,32 @@ function unmarshall(json) {
 // Also extracts data.eventName (INSERT, MODIFY, REMOVE). It's missing in the docs but present in the actual stream record.
 // ref: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_Record.html
 //      https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_StreamRecord.html
-function flattenDynamoDBTransformer(data, callback) {
-  let extractKeys = EXTRACT_KEYS?.split(',')
+export function flattenDynamoDBTransformer(data: any, callback: any) {
+  let extractKeys = c.EXTRACT_KEYS?.split(',')
   if (!extractKeys || extractKeys.length <= 0) {
     extractKeys = []
   }
   let json = data
   if (typeof data === 'string' || data instanceof String) {
-    json = JSON.parse(data)
+    json = JSON.parse(data.toString())
   }
   let keys = data?.Keys ? unmarshall(data.Keys) : {}
   let newImage = data?.NewImage ? unmarshall(data.NewImage) : {}
   const eventName = data?.eventName
   const filtered = { eventName, ...keys, ...filter(newImage, extractKeys) }
-  callback(null, Buffer.from(JSON.stringify(filtered) + '\n', targetEncoding))
+  callback(null, Buffer.from(JSON.stringify(filtered) + '\n', c.targetEncoding))
 }
-exports.flattenDynamoDBTransformer = flattenDynamoDBTransformer
 
 // Return an object with only specified keys in it
-function filter(object, filterKeys) {
-  return Object.keys(object).filter(key => filterKeys.includes(key)).reduce((filtered, key) => {
+function filter(object: any, filterKeys: string[]) {
+  return Object.keys(object).filter(key => filterKeys.includes(key)).reduce((filtered: any, key: string) => {
     filtered[key] = object[key]
     return filtered
   }, {})
 }
+
+// Alias for current type for String.match(match: { ... })
+type Matcher = { [Symbol.match](string: string): RegExpMatchArray | null; }
 
 /**
  * Example transformer that converts a regular expression to delimited text
@@ -98,29 +112,28 @@ function filter(object, filterKeys) {
  * Example regex transformer:
  *  var transformer = exports.regexToDelimTextTransformer.bind(undefined, /(myregex) (.*)/, "|");
  */
-function regexToDelimTextTransformer(regex, delimiter, data, callback) {
+export function regexToDelimTextTransformer(regex: Matcher, delimiter: string, data: any, callback: any) {
   var tokens = JSON.stringify(data).match(regex)
 
   if (tokens) {
     // emitting a new buffer as delimited text whose contents are the regex
     // character classes
-    callback(null, Buffer.from(tokens.slice(1).join(delimiter) + '\n', targetEncoding))
+    callback(null, Buffer.from(tokens.slice(1).join(delimiter) + '\n', c.targetEncoding))
   } else {
     callback('Configured Regular Expression does not match any tokens', null)
   }
 }
-exports.regexToDelimTextTransformer = regexToDelimTextTransformer
 
-function transformRecords(serviceName, transformer, userRecords, callback) {
-  async.map(
+export function transformRecords(serviceName: string, transformer: any, userRecords: any, callback: any) {
+  map(
     userRecords,
-    function (userRecord, userRecordCallback) {
-      var dataItem =
-        serviceName === KINESIS_SERVICE_NAME
-          ? Buffer.from(userRecord.data, 'base64').toString(targetEncoding)
+    function (userRecord: any, userRecordCallback: any) {
+      const dataItem =
+        serviceName === c.KINESIS_SERVICE_NAME
+          ? Buffer.from(userRecord.data, 'base64').toString(c.targetEncoding)
           : userRecord
 
-      transformer.call(undefined, dataItem, function (err, transformed) {
+      transformer.call(undefined, dataItem, function (err?: Error | string, transformed?: Buffer) {
         if (err) {
           console.log(JSON.stringify(err))
           userRecordCallback(err)
@@ -151,24 +164,23 @@ function transformRecords(serviceName, transformer, userRecords, callback) {
     }
   )
 }
-exports.transformRecords = transformRecords
 
-function setupTransformer(callback) {
+export function setupTransformer(this: any, callback: any) {
   // Set the default transformer
-  var t = jsonToStringTransformer.bind(undefined)
+  let t = jsonToStringTransformer.bind(undefined)
   // Check if the transformer has been overridden by environment settings
-  if (process.env[TRANSFORMER_FUNCTION_ENV]) {
-    console.log(process.env[TRANSFORMER_FUNCTION_ENV])
-    var found = false
-    Object.keys(transformerRegistry).forEach(function (key) {
-      if (process.env[TRANSFORMER_FUNCTION_ENV] === transformerRegistry[key]) {
+  if (process.env[c.TRANSFORMER_FUNCTION_ENV]) {
+    console.log(process.env[c.TRANSFORMER_FUNCTION_ENV])
+    let found = false
+    for (const [key, value] of Object.entries(c.transformerRegistry)) {
+      if (process.env[c.TRANSFORMER_FUNCTION_ENV] === value) {
         found = true
       }
-    })
-    if (found === false) {
+    }
+    if (!found) {
       callback(
         'Configured Transformer function ' +
-          process.env[TRANSFORMER_FUNCTION_ENV] +
+          process.env[c.TRANSFORMER_FUNCTION_ENV] +
           ' is not a valid transformation method in the transformer.js module'
       )
     } else {
@@ -176,31 +188,30 @@ function setupTransformer(callback) {
         console.log('Setting data transformer based on Transformer Override configuration')
       }
       // Dynamically bind in the transformer function
-      t = this[process.env[TRANSFORMER_FUNCTION_ENV]].bind(undefined)
+      t = this[process.env[c.TRANSFORMER_FUNCTION_ENV]].bind(undefined)
     }
   } else {
     if (debug) {
       console.log('No Transformer Override Environment Configuration found')
     }
     // Set the transformer based on specified datatype of the stream
-    if (process.env[STREAM_DATATYPE_ENV]) {
-      var found = false
-      Object.keys(supportedDatatypeTransformerMappings).forEach(function (key) {
-        if (process.env[STREAM_DATATYPE_ENV] === key) {
+    const STREAM_DATATYPE_ENV: string | undefined = process.env[c.STREAM_DATATYPE_ENV]
+    let STREAM_DATATYPE: keyof typeof c.supportedDatatypeTransformerMappings = 'JSON'
+    if (STREAM_DATATYPE_ENV) {
+      let found = false
+      Object.keys(c.supportedDatatypeTransformerMappings).forEach(function (key) {
+        if (STREAM_DATATYPE_ENV === key) {
           found = true
+          STREAM_DATATYPE = STREAM_DATATYPE_ENV as keyof typeof c.supportedDatatypeTransformerMappings
         }
       })
-      if (found === true) {
+      if (found) {
         // Set the transformer class via a cross reference to the transformer mapping
         if (debug) {
           console.log('Setting data transformer based on Stream Datatype configuration')
         }
-        t =
-          this[
-            transformerRegistry[
-              supportedDatatypeTransformerMappings[process.env[STREAM_DATATYPE_ENV]]
-            ]
-          ].bind(undefined)
+        const supportedDatatype = c.supportedDatatypeTransformerMappings[STREAM_DATATYPE]
+        t = this[c.transformerRegistry[supportedDatatype]].bind(undefined)
       }
     } else {
       if (debug) {
@@ -213,4 +224,3 @@ function setupTransformer(callback) {
   }
   callback(null, t)
 }
-exports.setupTransformer = setupTransformer
