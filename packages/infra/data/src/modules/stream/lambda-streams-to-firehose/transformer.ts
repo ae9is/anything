@@ -11,7 +11,8 @@
  */
 
 import { map } from 'async'
-import * as aws from 'aws-sdk'
+import { unmarshall } from '@aws-sdk/util-dynamodb'
+
 import * as c from './constants'
 
 const debug = process.env.DEBUG || false
@@ -66,11 +67,6 @@ export function unmarshallDynamoDBTransformer(data: any, callback: any) {
     unmarshalled.OldImage = oldImage
   }
   callback(null, Buffer.from(JSON.stringify(unmarshalled) + '\n', c.targetEncoding))
-}
-
-function unmarshall(json: any) {
-  // Data must be JSON, not string
-  return aws.DynamoDB.Converter.unmarshall(json)
 }
 
 // Unmarshall DynamoDB streams data, and flatten/filter data, extracting only the specified keys from NewImage.
@@ -165,7 +161,7 @@ export function transformRecords(serviceName: string, transformer: any, userReco
   )
 }
 
-export function setupTransformer(this: any, callback: any) {
+export async function setupTransformer(this: any, callback?: (...args: any[]) => Promise<void>) {
   // Set the default transformer
   let t = jsonToStringTransformer.bind(undefined)
   // Check if the transformer has been overridden by environment settings
@@ -178,11 +174,13 @@ export function setupTransformer(this: any, callback: any) {
       }
     }
     if (!found) {
-      callback(
-        'Configured Transformer function ' +
-          process.env[c.TRANSFORMER_FUNCTION_ENV] +
-          ' is not a valid transformation method in the transformer.js module'
-      )
+      if (callback) {
+        await callback(
+          'Configured Transformer function ' +
+            process.env[c.TRANSFORMER_FUNCTION_ENV] +
+            ' is not a valid transformation method in the transformer.js module'
+        )
+      }
     } else {
       if (debug) {
         console.log('Setting data transformer based on Transformer Override configuration')
@@ -222,5 +220,7 @@ export function setupTransformer(this: any, callback: any) {
   if (debug) {
     console.log('Using Transformer function ' + t.name)
   }
-  callback(null, t)
+  if (callback) {
+    await callback(null, t)
+  }
 }
