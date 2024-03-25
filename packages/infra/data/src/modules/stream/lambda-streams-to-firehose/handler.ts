@@ -52,9 +52,9 @@ import * as transform from './transformer'
  * create the transformer instance - change this to be regexToDelimter, or your
  * own new function
  */
-let useTransformer: c.transformerRegistryKey
+let useTransformer: transform.TransformerFunction
 
-export function setTransformer(transformer: c.transformerRegistryKey) {
+export function setTransformer(transformer: transform.TransformerFunction) {
   useTransformer = transformer
 }
 
@@ -102,7 +102,7 @@ const deliveryStreamMapping: { [key: string]: string } = {
   DEFAULT: 'LambdaStreamsDefaultDeliveryStream',
 }
 
-export async function init(callback?: (args: any) => Promise<void>) {
+export async function init(callback?: (err?: string) => Promise<void>) {
   if (!online) {
     if (!setRegion || setRegion === null || setRegion === '') {
       setRegion = 'us-east-1'
@@ -111,11 +111,9 @@ export async function init(callback?: (args: any) => Promise<void>) {
     if (debug) {
       console.log('AWS Streams to Firehose Forwarder v' + pjson.version + ' in ' + setRegion)
     }
-    transform.setupTransformer(async function (err: string, transformer: c.transformerRegistryKey) {
+    transform.setupTransformer(async function (err: string, transformer: transform.TransformerFunction) {
       if (err) {
-        if (callback) {
-          await callback(err)
-        }
+        await callback?.(err)
       } else {
         useTransformer = transformer
         // configure a new connection to firehose, if one has not been
@@ -141,15 +139,11 @@ export async function init(callback?: (args: any) => Promise<void>) {
           })
         }
         online = true
-        if (callback) {
-          await callback(null)
-        }
+        await callback?.()
       }
     })
   } else {
-    if (callback) {
-      await callback(null)
-    }
+    await callback?.()
   }
 }
 
@@ -248,7 +242,7 @@ export async function handler(event: DynamoDBStreamEvent, context: any) {
     // terminate if there were any non process reasons
     finish(noProcessStatus, c.ERROR, noProcessReason)
   } else {
-    await init(async function (err: string) {
+    await init(async function (err?: string) {
       if (err) {
         finish(err, c.ERROR, 'Error')
       } else {
@@ -561,7 +555,7 @@ export function processEvent(event: DynamoDBStreamEvent, serviceName: string, st
           serviceName,
           useTransformer,
           userRecords,
-          function (err: string, transformed: any) {
+          function (err: Error | string | null, transformed?: (Buffer | undefined)[]) {
             // apply the routing function that has been configured
             router.routeToDestination(
               deliveryStreamName,

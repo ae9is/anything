@@ -10,12 +10,15 @@
  * filtering) then nothing will be sent to Firehose
  */
 
+import * as deagg from 'aws-kinesis-agg'
 import { map } from 'async'
 import { unmarshall } from '@aws-sdk/util-dynamodb'
 
 import * as c from './constants'
 
 const debug = process.env.DEBUG || false
+
+export type TransformerFunction = (data: any, callback: any) => void
 
 export function addNewlineTransformer(data: any, callback: any) {
   // emitting a new buffer as text with newline
@@ -32,20 +35,6 @@ export function jsonToStringTransformer(data: any, callback: any) {
 export function doNothingTransformer(data: any, callback: any) {
   // emitting a new buffer as text with newline
   callback(null, Buffer.from(data, c.targetEncoding))
-}
-
-/**
- * Example transformer that converts a regular expression to delimited text
- */
-export function regexToDelimiter(regex: RegExp | string, delimiter: string, data: any, callback: (msg?: string, buf?: any) => void) {
-  const tokens = JSON.stringify(data).match(regex)
-  if (tokens) {
-    // emitting a new buffer as delimited text whose contents are the regex
-    // character classes
-    callback(undefined, Buffer.from(tokens.slice(1).join(delimiter) + '\n'))
-  } else {
-    callback('Configured Regular Expression does not match any tokens', null)
-  }
 }
 
 // DynamoDB Streams emit typed low-level JSON data, like: {"key":{"S":"value"}}
@@ -98,15 +87,19 @@ function filter(object: any, filterKeys: string[]) {
   }, {})
 }
 
-export function transformRecords(serviceName: string, transformer: any, userRecords: any, callback: any) {
+export function transformRecords(
+  serviceName: string,
+  transformer: TransformerFunction,
+  userRecords: deagg.UserRecord[],
+  callback: (err: Error | string | null, transformed?: (Buffer | undefined)[]) => void,
+) {
   map(
     userRecords,
-    function (userRecord: any, userRecordCallback: any) {
+    function (userRecord: deagg.UserRecord, userRecordCallback: (err: Error | string | null, transformed?: Buffer) => void) {
       const dataItem =
         serviceName === c.KINESIS_SERVICE_NAME
           ? Buffer.from(userRecord.data, 'base64').toString(c.targetEncoding)
           : userRecord
-
       transformer.call(undefined, dataItem, function (err?: Error | string, transformed?: Buffer) {
         if (err) {
           console.log(JSON.stringify(err))
@@ -141,7 +134,7 @@ export function transformRecords(serviceName: string, transformer: any, userReco
 
 export async function setupTransformer(callback?: (...args: any[]) => Promise<void>) {
   // Set the default transformer
-  let t = jsonToStringTransformer.bind(undefined)
+  let t: TransformerFunction = jsonToStringTransformer.bind(undefined)
   // Check if the transformer has been overridden by environment settings
   const TRANSFORMER_FUNCTION_ENV: string | undefined = process.env[c.TRANSFORMER_FUNCTION_ENV]
   let TRANSFORMER_FUNCTION: keyof typeof transformerFunctions = 'jsonToStringTransformer'
