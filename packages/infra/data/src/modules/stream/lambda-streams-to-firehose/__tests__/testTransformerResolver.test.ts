@@ -10,7 +10,7 @@ describe('Transformer Tests', function () {
   })
   describe('- Verify the default transformer', function () {
     it(': Is using the default transformer', function () {
-      transform.setupTransformer(async function (err: string | null, t: any) {
+      transform.setupTransformer(async function (err: Error | string | null, t: any) {
         if (err) {
           assert.fail(err)
         } else {
@@ -26,7 +26,7 @@ describe('Transformer Tests', function () {
   describe('- Verify configuring the stream datatype CSV', function () {
     it(': Is using the configured transformer', function () {
       process.env[c.STREAM_DATATYPE_ENV] = 'CSV'
-      transform.setupTransformer(async function (err: string | null, t: any) {
+      transform.setupTransformer(async function (err: Error | string | null, t: any) {
         if (err) {
           assert.fail(err)
         } else {
@@ -42,7 +42,7 @@ describe('Transformer Tests', function () {
   describe('- Verify configuring the stream datatype CSV with newlines', function () {
     it(': Is using the configured transformer', function () {
       process.env[c.STREAM_DATATYPE_ENV] = 'CSV-WITH-NEWLINES'
-      transform.setupTransformer(async function (err: string | null, t: any) {
+      transform.setupTransformer(async function (err: Error | string | null, t: any) {
         if (err) {
           assert.fail(err)
         } else {
@@ -58,7 +58,7 @@ describe('Transformer Tests', function () {
   describe('- Verify configuring the stream datatype BINARY', function () {
     it(': Is using the configured transformer', function () {
       process.env[c.STREAM_DATATYPE_ENV] = 'BINARY'
-      transform.setupTransformer(async function (err: string | null, t: any) {
+      transform.setupTransformer(async function (err: Error | string | null, t: any) {
         if (err) {
           assert.fail(err)
         } else {

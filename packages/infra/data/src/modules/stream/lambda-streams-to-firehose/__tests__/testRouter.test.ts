@@ -1,5 +1,6 @@
 import * as assert from 'assert'
 
+import * as c from '../constants'
 import * as router from '../router'
 import { BatchItem } from '../handler'
 
@@ -7,8 +8,8 @@ describe('Routing tests', function () {
   const defaultDeliveryStream = 'MyDeliveryStream'
   describe('Default Routing', function () {
     const records = [
-      Buffer.from('IanTest1').toString('base64'),
-      Buffer.from('IanTest2').toString('base64'),
+      Buffer.from('test1', c.targetEncoding),
+      Buffer.from('test2', c.targetEncoding),
     ]
     router.routeToDestination(
       defaultDeliveryStream,
