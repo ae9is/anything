@@ -41,8 +41,8 @@ const writableEventTypes = process.env.WRITABLE_EVENT_TYPES
   : allEventTypes
 
 let setRegion = process.env.AWS_REGION
-export let firehose: FirehoseClient
-export let kinesis: KinesisClient
+export var firehose: FirehoseClient
+export var kinesis: KinesisClient
 let online = false
 
 /* Configure transform utility */
@@ -123,7 +123,6 @@ export async function init(callback?: (err?: Error | string | null) => Promise<v
             console.log('Connecting to Amazon Kinesis Firehose in ' + setRegion)
           }
           firehose = new FirehoseClient({
-            apiVersion: '2015-08-04',
             region: setRegion,
           })
         }
@@ -134,7 +133,6 @@ export async function init(callback?: (err?: Error | string | null) => Promise<v
             console.log('Connecting to Amazon Kinesis Streams in ' + setRegion)
           }
           kinesis = new KinesisClient({
-            apiVersion: '2013-12-02',
             region: setRegion,
           })
         }
@@ -271,9 +269,15 @@ export async function handler(event: DynamoDBStreamEvent, context: any) {
             // tag
             // value
             // to the delivery map, and continue with processEvent
+            if (debug) {
+              console.log('No delivery stream cached, build delivery map ...')
+            }
             await buildDeliveryMap(streamName, serviceName, context, event, processor)
           } else {
             // delivery stream is cached so just invoke the processor
+            if (debug) {
+              console.log('Delivery stream already cached')
+            }
             processor()
           }
         } catch (e) {
@@ -300,7 +304,7 @@ export async function verifyDeliveryStreamMapping(
   shouldFailbackToDefaultDeliveryStream: boolean,
   context: any,
   event: any,
-  callback: (args?: any) => void,
+  callback: () => void,
 ) {
   if (debug) {
     console.log('Verifying delivery stream')
@@ -313,6 +317,9 @@ export async function verifyDeliveryStreamMapping(
        * prevent accidental forwarding of streams to a firehose set
        * USE_DEFAULT_DELIVERY_STREAMS = false.
        */
+      if (debug) {
+        console.log('No delivery stream specified, falling back to default: ' + deliveryStreamMapping['DEFAULT'])
+      }
       deliveryStreamMapping[streamName] = deliveryStreamMapping['DEFAULT']
     } else {
       /*
@@ -320,6 +327,9 @@ export async function verifyDeliveryStreamMapping(
        * not configured to use a default. Kinesis Streams should be tagged
        * with ForwardToFirehoseStream = <DeliveryStreamName>
        */
+      if (debug) {
+        console.error('Failing as no stream has been specified and we are configured not to use default!')
+      }
       onCompletion(
         context,
         event,
@@ -332,22 +342,60 @@ export async function verifyDeliveryStreamMapping(
       )
     }
   }
-  // validate the delivery stream name provided
-  const params = {
-    DeliveryStreamName: deliveryStreamMapping[streamName],
-  }
-  const cmd = new DescribeDeliveryStreamCommand(params)
   try {
+    if (debug) {
+      console.log('Trying to validate delivery stream name: ' + deliveryStreamMapping[streamName])
+    }
+    // validate the delivery stream name provided
+    const params = {
+      DeliveryStreamName: deliveryStreamMapping[streamName],
+    }
+    const cmd = new DescribeDeliveryStreamCommand(params)
+    if (debug) {
+      console.log('Firehose client:', firehose)
+      console.log('Command:', cmd)
+    }
+    if (!firehose) {
+      throw Error('Firehose Client not initialized before verifyDeliveryStreamMapping()')
+    }
+
+    // TODO FIXME call to firehose client silently fails here, nothing is caught the lambda just terminates.
+    // It's like a process.exit() happens, Node.js event loop somehow just runs out of active handles.
+    //
+    // (Possibly similar issue for s3.send) ref: https://github.com/aws/aws-sdk-js-v3/issues/4332
     const resp = await firehose.send(cmd)
+
+    if (debug) {
+      console.log('Finished call to Firehose client')
+    }
+    if (params.DeliveryStreamName !== resp?.DeliveryStreamDescription?.DeliveryStreamName) {
+      if (debug) {
+        console.log('Expected delivery stream name: ', params.DeliveryStreamName)
+        console.log('Actual delivery stream name: ', resp?.DeliveryStreamDescription?.DeliveryStreamARN)
+      }
+      throw Error('Delivery stream name did not pass validation')
+    }
     // call the specified callback - should have
     // already
     // been prepared by the calling function
+    if (debug) {
+      console.log('Delivery stream name passed validation, processing work ...')
+    }
     callback()
   } catch (err) {
+    if (debug) {
+      console.log('Failed to validate delivery stream name')
+    }
     if (shouldFailbackToDefaultDeliveryStream) {
+      if (debug) {
+        console.log('Falling back to default delivery stream: ' + deliveryStreamMapping['DEFAULT'])
+      }
       deliveryStreamMapping[streamName] = deliveryStreamMapping['DEFAULT']
       await verifyDeliveryStreamMapping(streamName, false, context, event, callback)
     } else {
+      if (debug) {
+        console.error('Failing as specified stream failed validation and we are configured not to use default!')
+      }
       onCompletion(
         context,
         event,
@@ -355,8 +403,7 @@ export async function verifyDeliveryStreamMapping(
         c.ERROR,
         'Could not find suitable delivery stream for ' +
           streamName +
-          ' and the ' +
-          'default delivery stream (' +
+          ' and the default delivery stream (' +
           deliveryStreamMapping['DEFAULT'] +
           ") either doesn't exist or is disabled."
       )
@@ -368,15 +415,21 @@ export async function verifyDeliveryStreamMapping(
  * Function which resolves the destination delivery stream from the specified
  * Kinesis Stream Name, using Tags attached to the Kinesis Stream
  */
-export async function buildDeliveryMap(streamName: string, serviceName: string, context: any, event: any, callback: (args: any) => void) {
+export async function buildDeliveryMap(streamName: string, serviceName: string, context: any, event: any, callback: () => void) {
   if (debug) {
     console.log('Building delivery stream mapping')
   }
   if (deliveryStreamMapping[streamName]) {
+    if (debug) {
+      console.log('Delivery stream mapping already specified:', deliveryStreamMapping[streamName])
+    }
     // A delivery stream has already been specified in configuration
     // This could be indicative of debug usage.
     await verifyDeliveryStreamMapping(streamName, false, context, event, callback)
   } else if (serviceName === c.DDB_SERVICE_NAME) {
+    if (debug) {
+      console.log('Service is DynamoDB, set stream name to match table name:', streamName)
+    }
     // dynamodb streams need the firehose delivery stream to match
     // the table name
     deliveryStreamMapping[streamName] = streamName
@@ -388,6 +441,9 @@ export async function buildDeliveryMap(streamName: string, serviceName: string, 
       callback
     )
   } else {
+    if (debug) {
+      console.log('Getting delivery stream name from Kinesis tag:', streamName)
+    }
     // get the delivery stream name from Kinesis tag
     const params = {
       StreamName: streamName,
