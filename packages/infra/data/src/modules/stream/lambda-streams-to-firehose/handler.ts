@@ -18,17 +18,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-import * as deagg from 'aws-kinesis-agg'
-import * as async from 'async'
 import { DynamoDBRecord, DynamoDBStreamEvent, StreamRecord } from 'aws-lambda'
 import {
   FirehoseClient,
   PutRecordBatchCommand,
-  DescribeDeliveryStreamCommand,
   PutRecordBatchCommandInput,
+  PutRecordBatchCommandOutput,
   _Record,
 } from '@aws-sdk/client-firehose'
-import { KinesisClient, ListTagsForStreamCommand } from '@aws-sdk/client-kinesis'
 
 import { notEmpty, stringify } from 'utils'
 import * as pjson from '../../../../package.json'
@@ -39,11 +36,6 @@ const allEventTypes = ['INSERT', 'MODIFY', 'REMOVE']
 const writableEventTypes = process.env.WRITABLE_EVENT_TYPES
   ? process.env.WRITABLE_EVENT_TYPES.split(',')
   : allEventTypes
-
-let setRegion = process.env.AWS_REGION
-export var firehose: FirehoseClient
-export var kinesis: KinesisClient
-let online = false
 
 /* Configure transform utility */
 import * as transform from './transformer'
@@ -83,66 +75,25 @@ export function setRouter(router: router.RoutingFunction) {
 // };
 // var useRouter = router.routeByAttributeMapping.bind(undefined, attributeMap);
 
-// should KPL checksums be calculated?
-const computeChecksums = true
-
-/*
- * If the source Kinesis Stream's tags or DynamoDB Stream Name don't resolve to
- * an existing Firehose, allow usage of a default delivery stream, or fail with
- * an error.
- */
-const USE_DEFAULT_DELIVERY_STREAMS = true
-/*
- * Delivery stream mappings can be specified here to overwrite values provided
- * by Kinesis Stream tags or DynamoDB stream name. (Helpful for debugging)
- * Format: DDBStreamName: deliveryStreamName Or: FORWARD_TO_FIREHOSE_STREAM tag
- * value: deliveryStreamName
- */
-const deliveryStreamMapping: { [key: string]: string } = {
-  DEFAULT: 'LambdaStreamsDefaultDeliveryStream',
-}
-
-export async function init(callback?: (err?: Error | string | null) => Promise<void>) {
-  if (!online) {
-    if (!setRegion || setRegion === null || setRegion === '') {
-      setRegion = 'us-east-1'
-      console.log('Warning: Setting default region ' + setRegion)
-    }
-    if (debug) {
-      console.log('AWS Streams to Firehose Forwarder v' + pjson.version + ' in ' + setRegion)
-    }
-    transform.setupTransformer(async function (err: Error | string | null, transformer: transform.TransformerFunction) {
-      if (err) {
-        await callback?.(err)
-      } else {
-        useTransformer = transformer
-        // configure a new connection to firehose, if one has not been
-        // provided
-        if (!firehose) {
-          if (debug) {
-            console.log('Connecting to Amazon Kinesis Firehose in ' + setRegion)
-          }
-          firehose = new FirehoseClient({
-            region: setRegion,
-          })
-        }
-        // configure a new connection to kinesis streams, if one has not
-        // been provided
-        if (!kinesis) {
-          if (debug) {
-            console.log('Connecting to Amazon Kinesis Streams in ' + setRegion)
-          }
-          kinesis = new KinesisClient({
-            region: setRegion,
-          })
-        }
-        online = true
-        await callback?.()
-      }
-    })
-  } else {
-    await callback?.()
+export async function init(): Promise<FirehoseClient> {
+  let firehoseClient: FirehoseClient
+  let setRegion = process.env.AWS_REGION
+  if (!setRegion) {
+    setRegion = 'us-east-1'
+    console.log('Warning: Setting default region ' + setRegion)
   }
+  if (debug) {
+    console.log('AWS Streams to Firehose Forwarder v' + pjson.version + ' in ' + setRegion)
+  }
+  useTransformer = await transform.setupTransformer()
+  // Configure a new connection to firehose, if one has not been provided
+  if (debug) {
+    console.log('Connecting to Amazon Data Firehose in ' + setRegion)
+  }
+  firehoseClient = new FirehoseClient({
+    region: setRegion,
+  })
+  return firehoseClient
 }
 
 // StreamRecord plus a couple attributes from DynamoDBRecord.
@@ -187,7 +138,7 @@ export function getStreamName(arn?: string) {
   }
 }
 
-export function onCompletion(context: any, event: DynamoDBStreamEvent, err: string | null, status: string, message: string) {
+export function onCompletion(context: any, err: string | null, status: string, message: string) {
   console.log('Processing Complete')
   if (err) {
     console.error(err)
@@ -205,274 +156,53 @@ export function onCompletion(context: any, event: DynamoDBStreamEvent, err: stri
 }
 
 export async function handler(event: DynamoDBStreamEvent, context: any) {
-  // add the context and event to the function that closes the lambda
-  // invocation
-  const finish = onCompletion.bind(undefined, context, event)
-  /** End Runtime Functions */
+  // Add context to the function that closes the lambda invocation
+  const finish = onCompletion.bind(undefined, context)
   if (debug) {
     console.log(stringify(event))
   }
-  // fail the function if the wrong event source type is being sent, or if
-  // there is no data, etc
+  // Fail if wrong event source type is being sent, or if there is no data, etc
   let noProcessStatus = c.ERROR
   let noProcessReason
-  let serviceName: string
-  if (!event.Records || event.Records.length === 0) {
-    noProcessReason = 'Event contains no Data'
+  let serviceName: string = ''
+  if (!event?.Records || event?.Records?.length === 0) {
     // not fatal - just got an empty event
+    noProcessReason = 'Event contains no Data'
     noProcessStatus = c.OK
-  } else {
+  } else if (event?.Records?.[0]?.eventSource === c.DDB_SERVICE_NAME) {
     // there are records in this event
-    if (
-      event.Records[0].eventSource === c.KINESIS_SERVICE_NAME ||
-      event.Records[0].eventSource === c.DDB_SERVICE_NAME
-    ) {
-      serviceName = event.Records[0].eventSource
-    } else {
-      noProcessReason = 'Invalid Event Source ' + event.Records[0].eventSource
-    }
-    // currently hard coded around the 1.0 kinesis event schema
-    // @ts-expect-error The typing for .kinesis isn't correct because it's an old record format
-    if (event.Records[0]?.kinesis && event.Records[0]?.kinesis.kinesisSchemaVersion !== '1.0') {
-      noProcessReason =
-        // @ts-expect-error DynamoDBRecord.kinesis
-        'Unsupported Kinesis Event Schema Version ' + event.Records[0]?.kinesis.kinesisSchemaVersion
-    }
+    serviceName = event.Records[0].eventSource
+  } else {
+    noProcessReason = 'Invalid Event Source ' + event.Records[0].eventSource
   }
   if (noProcessReason) {
     // terminate if there were any non process reasons
     finish(noProcessStatus, c.ERROR, noProcessReason)
   } else {
-    await init(async function (err?: Error | string | null) {
-      if (err) {
-        finish(String(err), c.ERROR, 'Error')
-      } else {
-        try {
-          // parse the stream name out of the event
-          const streamName = getStreamName(event.Records[0].eventSourceARN)
-          // create the processor to handle each record
-          const processor = processEvent.bind(
-            undefined,
-            event,
-            serviceName,
-            streamName,
-            function (err: string) {
-              if (err) {
-                finish(err, c.ERROR, 'Error Processing Records')
-              } else {
-                finish(null, c.OK, 'Finished Processing Records')
-              }
-            }
-          )
-          if (Object.keys(deliveryStreamMapping).length === 0 || !streamName || !deliveryStreamMapping[streamName]) {
-            // no delivery stream cached so far, so add this stream's
-            // tag
-            // value
-            // to the delivery map, and continue with processEvent
-            if (debug) {
-              console.log('No delivery stream cached, build delivery map ...')
-            }
-            await buildDeliveryMap(streamName, serviceName, context, event, processor)
-          } else {
-            // delivery stream is cached so just invoke the processor
-            if (debug) {
-              console.log('Delivery stream already cached')
-            }
-            processor()
-          }
-        } catch (e) {
-          finish(String(e), c.ERROR, 'Error Processing Records')
-        }
-      }
-    })
-  }
-}
-
-/**
- * Function which resolves the destination delivery stream for a given Kinesis
- * stream. If no delivery stream is found to deliver to, then we will cache the
- * default delivery stream
- *
- * @param streamName
- * @param shouldFailbackToDefaultDeliveryStream
- * @param event
- * @param callback
- * @returns
- */
-export async function verifyDeliveryStreamMapping(
-  streamName: string,
-  shouldFailbackToDefaultDeliveryStream: boolean,
-  context: any,
-  event: any,
-  callback: () => void,
-) {
-  if (debug) {
-    console.log('Verifying delivery stream')
-  }
-  if (!deliveryStreamMapping[streamName]) {
-    if (shouldFailbackToDefaultDeliveryStream) {
-      /*
-       * No delivery stream has been specified, probably as it's not
-       * configured in stream tags. Using default delivery stream. To
-       * prevent accidental forwarding of streams to a firehose set
-       * USE_DEFAULT_DELIVERY_STREAMS = false.
-       */
-      if (debug) {
-        console.log('No delivery stream specified, falling back to default: ' + deliveryStreamMapping['DEFAULT'])
-      }
-      deliveryStreamMapping[streamName] = deliveryStreamMapping['DEFAULT']
-    } else {
-      /*
-       * Fail as no delivery stream mapping has been specified and we have
-       * not configured to use a default. Kinesis Streams should be tagged
-       * with ForwardToFirehoseStream = <DeliveryStreamName>
-       */
-      if (debug) {
-        console.error('Failing as no stream has been specified and we are configured not to use default!')
-      }
-      onCompletion(
-        context,
-        event,
-        null,
-        c.ERROR,
-        'Warning: Kinesis Stream ' +
-          streamName +
-          ' not tagged for Firehose delivery with Tag name ' +
-          c.FORWARD_TO_FIREHOSE_STREAM
-      )
-    }
-  }
-  try {
-    if (debug) {
-      console.log('Trying to validate delivery stream name: ' + deliveryStreamMapping[streamName])
-    }
-    // validate the delivery stream name provided
-    const params = {
-      DeliveryStreamName: deliveryStreamMapping[streamName],
-    }
-    const cmd = new DescribeDeliveryStreamCommand(params)
-    if (debug) {
-      console.log('Firehose client:', firehose)
-      console.log('Command:', cmd)
-    }
-    if (!firehose) {
-      throw Error('Firehose Client not initialized before verifyDeliveryStreamMapping()')
-    }
-
-    // TODO FIXME call to firehose client silently fails here, nothing is caught the lambda just terminates.
-    // It's like a process.exit() happens, Node.js event loop somehow just runs out of active handles.
-    //
-    // (Possibly similar issue for s3.send) ref: https://github.com/aws/aws-sdk-js-v3/issues/4332
-    const resp = await firehose.send(cmd)
-
-    if (debug) {
-      console.log('Finished call to Firehose client')
-    }
-    if (params.DeliveryStreamName !== resp?.DeliveryStreamDescription?.DeliveryStreamName) {
-      if (debug) {
-        console.log('Expected delivery stream name: ', params.DeliveryStreamName)
-        console.log('Actual delivery stream name: ', resp?.DeliveryStreamDescription?.DeliveryStreamARN)
-      }
-      throw Error('Delivery stream name did not pass validation')
-    }
-    // call the specified callback - should have
-    // already
-    // been prepared by the calling function
-    if (debug) {
-      console.log('Delivery stream name passed validation, processing work ...')
-    }
-    callback()
-  } catch (err) {
-    if (debug) {
-      console.log('Failed to validate delivery stream name')
-    }
-    if (shouldFailbackToDefaultDeliveryStream) {
-      if (debug) {
-        console.log('Falling back to default delivery stream: ' + deliveryStreamMapping['DEFAULT'])
-      }
-      deliveryStreamMapping[streamName] = deliveryStreamMapping['DEFAULT']
-      await verifyDeliveryStreamMapping(streamName, false, context, event, callback)
-    } else {
-      if (debug) {
-        console.error('Failing as specified stream failed validation and we are configured not to use default!')
-      }
-      onCompletion(
-        context,
-        event,
-        null,
-        c.ERROR,
-        'Could not find suitable delivery stream for ' +
-          streamName +
-          ' and the default delivery stream (' +
-          deliveryStreamMapping['DEFAULT'] +
-          ") either doesn't exist or is disabled."
-      )
-    }
-  }
-}
-
-/**
- * Function which resolves the destination delivery stream from the specified
- * Kinesis Stream Name, using Tags attached to the Kinesis Stream
- */
-export async function buildDeliveryMap(streamName: string, serviceName: string, context: any, event: any, callback: () => void) {
-  if (debug) {
-    console.log('Building delivery stream mapping')
-  }
-  if (deliveryStreamMapping[streamName]) {
-    if (debug) {
-      console.log('Delivery stream mapping already specified:', deliveryStreamMapping[streamName])
-    }
-    // A delivery stream has already been specified in configuration
-    // This could be indicative of debug usage.
-    await verifyDeliveryStreamMapping(streamName, false, context, event, callback)
-  } else if (serviceName === c.DDB_SERVICE_NAME) {
-    if (debug) {
-      console.log('Service is DynamoDB, set stream name to match table name:', streamName)
-    }
-    // dynamodb streams need the firehose delivery stream to match
-    // the table name
-    deliveryStreamMapping[streamName] = streamName
-    await verifyDeliveryStreamMapping(
-      streamName,
-      USE_DEFAULT_DELIVERY_STREAMS,
-      context,
-      event,
-      callback
-    )
-  } else {
-    if (debug) {
-      console.log('Getting delivery stream name from Kinesis tag:', streamName)
-    }
-    // get the delivery stream name from Kinesis tag
-    const params = {
-      StreamName: streamName,
-    }
-    const cmd = new ListTagsForStreamCommand(params)
     try {
-      const resp = await kinesis.send(cmd)
-      let shouldFailbackToDefaultDeliveryStream = USE_DEFAULT_DELIVERY_STREAMS
-      // grab the tag value if it's the foreward_to_firehose
-      // name item
-      resp.Tags?.map(function (item: any) {
-        if (item.Key === c.FORWARD_TO_FIREHOSE_STREAM) {
-          /*
-            * Disable fallback to a default delivery stream as a
-            * FORWARD_TO_FIREHOSE_STREAM has been specifically set.
-            */
-          shouldFailbackToDefaultDeliveryStream = false
-          deliveryStreamMapping[streamName] = item.Value
+      const firehoseClient = await init()
+      try {
+        // parse the stream name out of the event
+        const streamName = getStreamName(event.Records[0].eventSourceARN)
+        // create the processor to handle each record
+        const processor = processEvent.bind(
+          undefined,
+          event,
+          serviceName,
+          streamName,
+          firehoseClient
+        )
+        try {
+          const itemsToHandle = processor()
+          finish(null, c.OK, 'Finished Processing Records')
+        } catch (err) {
+          finish(String(err), c.ERROR, 'Error Processing Records')
         }
-      })
-      await verifyDeliveryStreamMapping(
-        streamName,
-        shouldFailbackToDefaultDeliveryStream,
-        context,
-        event,
-        callback
-      )
+      } catch (e) {
+        finish(String(e), c.ERROR, 'Error Processing Records')
+      }
     } catch (err) {
-      onCompletion(context, event, String(err), c.ERROR, 'Unable to List Tags for Stream')
+      finish(String(err), c.ERROR, 'Error')
     }
   }
 }
@@ -538,12 +268,13 @@ export function getBatchRanges(records: Uint8Array[]): BatchItem[] {
  * transformer will be invoked, and the messages will be passed through a router
  * which can determine the delivery stream dynamically if needed
  */
-export function processEvent(event: DynamoDBStreamEvent, serviceName: string, streamName: string, callback: any) {
+export async function processEvent(event: DynamoDBStreamEvent, serviceName: string, streamName: string, firehoseClient: FirehoseClient) {
+  const itemsToHandle: DynamoDBDataItem[] = []
   if (debug) {
     console.log('Processing event')
   }
   // look up the delivery stream name of the mapping cache
-  const deliveryStreamName = deliveryStreamMapping[streamName]
+  const deliveryStreamName = streamName
   if (debug) {
     console.log(
       'Forwarding ' +
@@ -554,123 +285,98 @@ export function processEvent(event: DynamoDBStreamEvent, serviceName: string, st
         deliveryStreamName
     )
   }
-  async.map<DynamoDBRecord, (deagg.UserRecord | DynamoDBDataItem)[], string>(
-    event.Records,
-    function (record: DynamoDBRecord, recordCallback: (err?: string | null, result?: (deagg.UserRecord | DynamoDBDataItem)[]) => void) {
-      // resolve the record data based on the service
-      if (serviceName === c.KINESIS_SERVICE_NAME) {
-        // run the record through the KPL deaggregator
-        // @ts-expect-error DynamoDBRecord.kinesis
-        deagg.deaggregateSync(record.kinesis, computeChecksums, function (err, userRecords) {
-          // userRecords now has all the deaggregated user records, or
-          // just the original record if no KPL aggregation is in use
-          if (err) {
-            recordCallback(err.message)
-          } else {
-            recordCallback(null, userRecords)
-          }
-        })
-      } else {
-        // dynamo update stream record
-        if (record?.eventName && writableEventTypes.includes(record.eventName)) {
-          if (debug) {
-            console.log(
-              'Processing record: ' +
-                stringify(record) +
-                ' with event type: ' +
-                record.eventName +
-                ' when writable events are: ' +
-                writableEventTypes
-            )
-          }
-          const item = createDynamoDataItem(record)
-          recordCallback(null, [item])
-        } else {
-          if (debug) {
-            console.log(
-              'Skipping record: ' +
-                stringify(record) +
-                ' with event type: ' +
-                record.eventName +
-                ' when writable events are: ' +
-                writableEventTypes
-            )
-          }
-          recordCallback(null, undefined)
-        }
+  for (const record of event.Records) {
+    // dynamo update stream record
+    if (record?.eventName && writableEventTypes.includes(record.eventName)) {
+      if (debug) {
+        console.log(
+          'Processing record: ' +
+            stringify(record) +
+            ' with event type: ' +
+            record.eventName +
+            ' when writable events are: ' +
+            writableEventTypes
+        )
       }
-    },
-    // recordCallback
-    function (err?: string | null, results?: Array<(deagg.UserRecord | DynamoDBDataItem)[] | undefined>) {
-      const extractedUserRecords = results ?? []
-      if (err) {
-        callback(err)
-      } else {
-        // extractedUserRecords will be array[array[Object]], so
-        // flatten to array[Object]
-        const userRecords: (deagg.UserRecord | DynamoDBDataItem)[] = extractedUserRecords.filter(notEmpty).flat()
-        // transform the user records
-        transform.transformRecords(
-          serviceName,
-          useTransformer,
-          userRecords,
-          function (err: Error | string | null, transformed?: (Buffer | undefined)[]) {
-            if (err) {
-              console.error(err)
-            }
-            if (transformed === undefined) {
-              // Nothing to route
-              callback(err)
-              return
-            }
-            // apply the routing function that has been configured
-            router.routeToDestination(
-              deliveryStreamName,
-              transformed,
-              useRouter,
-              function (err: string, routingDestinationMap: any) {
-                if (err) {
-                  // we are still going to route to the default stream
-                  // here, as a bug in routing implementation cannot
-                  // result in lost data!
-                  console.error(err)
-                  // discard the delivery map we might have received
-                  routingDestinationMap[deliveryStreamName] = transformed
-                }
-                // send the routed records to the delivery processor
-                async.map(
-                  Object.keys(routingDestinationMap),
-                  function (destinationStream: string, asyncCallback: any) {
-                    const records = routingDestinationMap[destinationStream]
-                    processFinalRecords(records, streamName, destinationStream, asyncCallback)
-                  },
-                  function (err?: string | null, results?: (BatchItem | undefined)[]) {
-                    if (err) {
-                      callback(err)
-                    } else {
-                      if (debug) {
-                        results?.map(function (item?: BatchItem) {
-                          console.log(stringify(item))
-                        })
-                      }
-                      callback()
-                    }
-                  }
-                )
-              }
-            )
-          }
+      const item = createDynamoDataItem(record)
+      itemsToHandle.push(item)
+    } else {
+      if (debug) {
+        console.log(
+          'Skipping record: ' +
+            stringify(record) +
+            ' with event type: ' +
+            record.eventName +
+            ' when writable events are: ' +
+            writableEventTypes
         )
       }
     }
-  )
+  }
+  await handleResults(firehoseClient, streamName, itemsToHandle)
+}
+
+async function handleResults(
+  firehoseClient: FirehoseClient,
+  streamName: string,
+  results?: DynamoDBDataItem[],
+) {
+  const extractedUserRecords = results ?? []
+  // extractedUserRecords will be array[array[Object]], so flatten to array[Object]
+  const userRecords: DynamoDBDataItem[] = extractedUserRecords.filter(notEmpty).flat()
+  // transform the user records
+  try {
+    const transformed: Buffer[] = await transform.transformRecords(
+      useTransformer,
+      userRecords
+    )
+    if (transformed === undefined) {
+      if (debug) {
+        console.log('Nothing to route')
+      }
+      return
+    }
+    // apply the routing function that has been configured
+    let routingDestinationMap: router.RoutingMap = {}
+    try {
+      routingDestinationMap = router.routeToDestination(
+        streamName,
+        transformed,
+        useRouter,
+      )
+      // send the routed records to the delivery processor
+      for (const destinationStream of Object.keys(routingDestinationMap)) {
+        const records = routingDestinationMap[destinationStream]
+        await processFinalRecords(
+          firehoseClient,
+          records,
+          streamName,
+          destinationStream
+        )
+      }
+    } catch (err) {
+      // we are still going to route to the default stream here,
+      // as a bug in routing implementation cannot result in lost data!
+      console.error(err)
+      // discard the delivery map we might have received
+      routingDestinationMap[streamName] = transformed
+    }
+  } catch (err) {
+    console.error(err)
+  }
 }
 
 /**
- * function which forwards a batch of kinesis records to a firehose delivery
- * stream
+ * function which forwards a batch of records to a firehose delivery stream
  */
-export async function writeToFirehose(firehoseBatch: _Record[] | undefined, streamName: string, deliveryStreamName: string, callback: (args?: any) => void, retries?: number) {
+export async function writeToFirehose(
+  firehoseClient: FirehoseClient,
+  firehoseBatch: _Record[] | undefined,
+  streamName: string,
+  deliveryStreamName: string,
+  retries?: number
+) {
+  let leftover: PutRecordBatchCommandOutput | undefined = undefined
   const numRetries = retries ?? 0
   // write the batch to firehose with putRecordBatch
   const putRecordBatchParams: PutRecordBatchCommandInput = {
@@ -678,21 +384,28 @@ export async function writeToFirehose(firehoseBatch: _Record[] | undefined, stre
     Records: firehoseBatch,
   }
   if (debug) {
-    console.log('Writing to firehose delivery stream (' + numRetries + ')')
+    console.log('Writing to firehose delivery stream (attempt ' + numRetries + ')')
     console.log(stringify(putRecordBatchParams))
   }
   const startTime = new Date().getTime()
-
   const cmd = new PutRecordBatchCommand(putRecordBatchParams)
-  try { 
-    const resp = await firehose.send(cmd)
+  try {
+    if (debug) {
+      console.log('Firehose client', firehoseClient)
+      console.log('Cmd:', cmd)
+      console.log('Sending cmd at: ' + new Date())
+    }
+
+    // TODO FIXME causes process.exit
+    const resp = await firehoseClient.send(cmd)
+
+    if (debug) {
+      console.log('Finished cmd at:' + new Date())
+    }
     if (resp.FailedPutCount !== 0) {
       console.log(
-        'Failed to write ' +
-          resp.FailedPutCount +
-          '/' +
-          firehoseBatch?.length ?? 0 +
-          ' records. Retrying to write...'
+        'Failed to write ' + resp.FailedPutCount + '/' + firehoseBatch?.length ??
+          0 + ' records. Retrying to write...'
       )
       if (numRetries < c.MAX_RETRY_ON_FAILED_PUT) {
         // extract the failed records
@@ -705,50 +418,43 @@ export async function writeToFirehose(firehoseBatch: _Record[] | undefined, stre
         setTimeout(
           await writeToFirehose.bind(
             undefined,
+            firehoseClient,
             failedBatch,
             streamName,
             deliveryStreamName,
-            function (err) {
-              if (err) {
-                callback(err)
-              } else {
-                callback()
-              }
-            },
             numRetries + 1
           ),
           c.RETRY_INTERVAL_MS
         )
       } else {
         console.log('Maximum retries reached, giving up')
-        callback(resp)
+        leftover = resp
       }
     } else {
       if (debug) {
         const elapsedMs = new Date().getTime() - startTime
         console.log(
-          'Successfully wrote ' +
-            firehoseBatch?.length ?? 0 +
-            ' records to Firehose ' +
-            deliveryStreamName +
-            ' in ' +
-            elapsedMs +
-            ' ms'
+          'Successfully wrote ' + firehoseBatch?.length ??
+            0 + ' records to Firehose ' + deliveryStreamName + ' in ' + elapsedMs + ' ms'
         )
       }
-      callback()
     }
   } catch (err) {
     console.log(stringify(err))
-    callback(err)
+    throw err
   }
+  return leftover
 }
 
 /**
- * function which handles the output of the defined transformation on each
- * record.
+ * function which handles the output of the defined transformation on each record.
  */
-export async function processFinalRecords(records: Uint8Array[], streamName: string, deliveryStreamName: string, callback: any) {
+export async function processFinalRecords(
+  firehoseClient: FirehoseClient,
+  records: Uint8Array[],
+  streamName: string,
+  deliveryStreamName: string,
+) {
   if (debug) {
     console.log('Delivering records to destination Streams')
   }
@@ -757,16 +463,12 @@ export async function processFinalRecords(records: Uint8Array[], streamName: str
   if (debug) {
     console.log(stringify(batches))
   }
-  // push to Firehose using PutRecords API at max record count or size.
-  // This uses the async reduce method so that records from Kinesis will
-  // appear in the Firehose PutRecords request in the same order as they
-  // were received by this function
-  async.reduce(
-    batches,
-    0,
-    async function (memo: number | undefined, item: BatchItem, callback: async.AsyncResultCallback<number, any>) {
-      const successCount = memo ?? 0
-      const reduceCallback = callback
+  // Push to Firehose using PutRecords API at max record count or size.
+  // Want records from Kinesis to appear in the Firehose PutRecords request in the same order as they
+  // were received by this function.
+  let successCount = 0
+  try {
+    for (const item of batches) {
       if (debug) {
         console.log(
           'Forwarding records ' +
@@ -778,8 +480,7 @@ export async function processFinalRecords(records: Uint8Array[], streamName: str
             ' Bytes'
         )
       }
-      // grab subset of the records assigned for this batch and push to
-      // firehose
+      // grab subset of the records assigned for this batch and push to firehose
       const processRecords = records.slice(item.lowOffset, item.highOffset)
       // decorate the array for the Firehose API
       const decorated: _Record[] = []
@@ -788,34 +489,27 @@ export async function processFinalRecords(records: Uint8Array[], streamName: str
           Data: item,
         })
       })
-      await writeToFirehose(decorated, streamName, deliveryStreamName, function (err: string) {
-        if (err) {
-          reduceCallback(err, successCount)
-        } else {
-          reduceCallback(null, successCount + 1)
-        }
-      })
-    },
-    function (err?: string | null, result?: number) {
-      const successfulBatches = result
-      if (err) {
-        console.log('Forwarding failure after ' + successfulBatches + ' successful batches')
-        callback(err)
-      } else {
-        console.log(
-          'Event forwarding complete. Forwarded ' +
-            successfulBatches +
-            ' batches comprising ' +
-            records.length +
-            ' records to Firehose ' +
-            deliveryStreamName
+      try {
+        const resp = await writeToFirehose(
+          firehoseClient,
+          decorated,
+          streamName,
+          deliveryStreamName
         )
-        callback(null, {
-          deliveryStreamName: deliveryStreamName,
-          batchesDelivered: successfulBatches,
-          recordCount: records.length,
-        })
+        successCount += 1
+      } catch (err) {
+        break
       }
     }
-  )
+    console.log(
+      'Event forwarding complete. Forwarded ' +
+        successCount +
+        ' batches comprising ' +
+        records.length +
+        ' records to Firehose ' +
+        deliveryStreamName
+    )
+  } catch (err) {
+    console.log('Forwarding failure after ' + successCount + ' successful batches')
+  }
 }

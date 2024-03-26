@@ -1,11 +1,12 @@
 
-export type RoutingFunction = (defaultDeliveryStreamName: string, records: (Buffer | undefined)[], callback: any) => void
+export type RoutingFunction = (defaultDeliveryStreamName: string, records: Buffer[]) => RoutingMap
+export type RoutingMap = { [streamName: string]: Buffer[] }
 
 /** function which will simply route records to the provided delivery stream */
-export function defaultRouting(defaultDeliveryStreamName: string, records: (Buffer | undefined)[], callback: any) {
-  const routingMap: { [streamName: string]: (Buffer | undefined)[] | undefined } = {}
+export function defaultRouting(defaultDeliveryStreamName: string, records: Buffer[]) {
+  const routingMap: RoutingMap = {}
   routingMap[defaultDeliveryStreamName] = records
-  callback(null, routingMap)
+  return routingMap
 }
 
 /**
@@ -14,9 +15,8 @@ export function defaultRouting(defaultDeliveryStreamName: string, records: (Buff
  * @param defaultDeliveryStreamName
  * @param records
  * @param routingFunction
- * @param callback
- * @returns
  */
-export function routeToDestination(defaultDeliveryStreamName: string, records: (Buffer | undefined)[], routingFunction: RoutingFunction, callback: any) {
-  routingFunction.call(undefined, defaultDeliveryStreamName, records, callback)
+export function routeToDestination(defaultDeliveryStreamName: string, records: Buffer[], routingFunction: RoutingFunction) {
+  const routingMap = routingFunction.call(undefined, defaultDeliveryStreamName, records)
+  return routingMap
 }

@@ -2,7 +2,6 @@ export const OK = 'OK'
 export const ERROR = 'ERROR'
 export const FORWARD_TO_FIREHOSE_STREAM = 'ForwardToFirehoseStream'
 export const DDB_SERVICE_NAME = 'aws:dynamodb'
-export const KINESIS_SERVICE_NAME = 'aws:kinesis'
 export const FIREHOSE_MAX_BATCH_COUNT = 500
 // Firehose max PutRecordBatch size 4MB
 export const FIREHOSE_MAX_BATCH_BYTES = 4 * 1000 * 1000
@@ -30,6 +29,6 @@ export enum supportedDatatypeTransformerMappings {
   'CSV-WITH-NEWLINES' = transformerRegistry.doNothingTransformer,
 }
 export const setRegion = process.env['AWS_REGION'] || 'us-east-1'
-export const DEFAULT_DELIVERY_STREAM = process.env['DEFAULT_DELIVERY_STREAM'] || 'delivery-stream-name'
+export const DEFAULT_DELIVERY_STREAM = process.env['DEFAULT_DELIVERY_STREAM'] || 'anything-dev-abc123-main'
 // For flattenDynamoDBTransformer only:
 export const EXTRACT_KEYS = process.env['EXTRACT_KEYS'] || 'modified,author,type,ctype,deleted,currentVersion'

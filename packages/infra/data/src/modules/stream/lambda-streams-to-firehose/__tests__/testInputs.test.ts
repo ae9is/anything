@@ -10,42 +10,23 @@ const marshalledJsonFragment = {Keys:{"key1":{"S":"value1"},"key2":{"S":"value2"
 describe('Input Data Tests', function () {
   describe('Verify the transformer does not add escape sequence to strings with double quotes', function () {
     const record = jsonFragmentString
-    transformer.addNewlineTransformer({ data: record, callback: function (err: string | null, data: any) {
-      if (err) {
-        assert.equal(err, undefined, 'Unexpected Error')
-      } else {
-        it('Does not add escape sequence', function () {
-          assert.equal(data.toString(c.targetEncoding), record + '\n', ' The data got modified ')
-        })
-      }
-    }})
+    const out = transformer.addNewlineTransformer(record)
+    it('Does not add escape sequence', function () {
+      assert.equal(out.toString(c.targetEncoding), record + '\n', ' The data got modified ')
+    })
   })
   describe('Verify the transformer does not modify non JSON data', function () {
     const record = csvFragment
-    transformer.addNewlineTransformer({ data: record, callback: function (err: string | null, data: any) {
-      if (err) {
-        assert.equal(err, undefined, 'Unexpected Error')
-      } else {
-        it('Verify that the CSV data is right', function () {
-          assert.equal(
-            data.toString(c.targetEncoding),
-            record + '\n',
-            ' The CSV data got modified'
-          )
-        })
-      }
-    }})
+    const out = transformer.addNewlineTransformer(record)
+    it('Verify that the CSV data is right', function () {
+      assert.equal(out.toString(c.targetEncoding), record + '\n', ' The CSV data got modified')
+    })
   })
   describe('Verify the transformer unmarshalls DynamoDB typed data correctly', function () {
     const record = marshalledJsonFragment
-    transformer.unmarshallDynamoDBTransformer({ data: record, callback: function (err: string | null, data: any) {
-      if (err) {
-        assert.equal(err, undefined, 'Unexpected Error')
-      } else {
-        it('Unmarshalls data correctly', function () {
-          assert.equal(data.toString(c.targetEncoding), JSON.stringify(jsonFragment) + '\n', ' The data was not unmarshalled correctly')
-        })
-      }
-    }})
+    const out = transformer.unmarshallDynamoDBTransformer(record)
+    it('Unmarshalls data correctly', function () {
+      assert.equal(out.toString(c.targetEncoding), JSON.stringify(jsonFragment) + '\n', ' The data was not unmarshalled correctly')
+    })
   })
 })
