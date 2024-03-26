@@ -20,7 +20,7 @@ limitations under the License.
 
 import * as deagg from 'aws-kinesis-agg'
 import * as async from 'async'
-import { DynamoDBRecord, DynamoDBStreamEvent } from 'aws-lambda'
+import { DynamoDBRecord, DynamoDBStreamEvent, StreamRecord } from 'aws-lambda'
 import {
   FirehoseClient,
   PutRecordBatchCommand,
@@ -70,7 +70,7 @@ import * as router from './router'
  */
 let useRouter = router.defaultRouting.bind(undefined)
 
-export function setRouter(router: any) {
+export function setRouter(router: router.RoutingFunction) {
   useRouter = router
 }
 
@@ -102,7 +102,7 @@ const deliveryStreamMapping: { [key: string]: string } = {
   DEFAULT: 'LambdaStreamsDefaultDeliveryStream',
 }
 
-export async function init(callback?: (err?: string) => Promise<void>) {
+export async function init(callback?: (err?: Error | string | null) => Promise<void>) {
   if (!online) {
     if (!setRegion || setRegion === null || setRegion === '') {
       setRegion = 'us-east-1'
@@ -111,7 +111,7 @@ export async function init(callback?: (err?: string) => Promise<void>) {
     if (debug) {
       console.log('AWS Streams to Firehose Forwarder v' + pjson.version + ' in ' + setRegion)
     }
-    transform.setupTransformer(async function (err: string, transformer: transform.TransformerFunction) {
+    transform.setupTransformer(async function (err: Error | string | null, transformer: transform.TransformerFunction) {
       if (err) {
         await callback?.(err)
       } else {
@@ -147,24 +147,27 @@ export async function init(callback?: (err?: string) => Promise<void>) {
   }
 }
 
+// StreamRecord plus a couple attributes from DynamoDBRecord.
+export type DynamoDBDataItem = StreamRecord & { eventName?: "INSERT" | "MODIFY" | "REMOVE", userIdentity?: any }
+
 /**
  * Function to create a condensed version of a dynamodb change record. This is
  * returned as a base64 encoded Buffer so as to implement the same interface
  * used for transforming kinesis records
  */
-export function createDynamoDataItem(record: any) {
-  const output: any = {}
-  output.Keys = record.dynamodb.Keys
-  if (record.dynamodb.NewImage) {
+export function createDynamoDataItem(record: DynamoDBRecord): DynamoDBDataItem {
+  const output: DynamoDBDataItem = {}
+  output.Keys = record?.dynamodb?.Keys
+  if (record?.dynamodb?.NewImage) {
     output.NewImage = record.dynamodb.NewImage
   }
-  if (record.dynamodb.OldImage) {
+  if (record?.dynamodb?.OldImage) {
     output.OldImage = record.dynamodb.OldImage
   }
   // add the sequence number and other metadata
-  output.SequenceNumber = record.dynamodb.SequenceNumber
-  output.SizeBytes = record.dynamodb.SizeBytes
-  output.ApproximateCreationDateTime = record.dynamodb.ApproximateCreationDateTime
+  output.SequenceNumber = record?.dynamodb?.SequenceNumber
+  output.SizeBytes = record?.dynamodb?.SizeBytes
+  output.ApproximateCreationDateTime = record?.dynamodb?.ApproximateCreationDateTime
   output.eventName = record.eventName
   // adding userIdentity, used by DynamoDB TTL to indicate removal by TTL as
   // opposed to user initiated remove
@@ -189,7 +192,7 @@ export function getStreamName(arn?: string) {
 export function onCompletion(context: any, event: DynamoDBStreamEvent, err: string | null, status: string, message: string) {
   console.log('Processing Complete')
   if (err) {
-    console.log(err)
+    console.error(err)
   }
   // log the event if we've failed
   if (status !== c.OK) {
@@ -242,9 +245,9 @@ export async function handler(event: DynamoDBStreamEvent, context: any) {
     // terminate if there were any non process reasons
     finish(noProcessStatus, c.ERROR, noProcessReason)
   } else {
-    await init(async function (err?: string) {
+    await init(async function (err?: Error | string | null) {
       if (err) {
-        finish(err, c.ERROR, 'Error')
+        finish(String(err), c.ERROR, 'Error')
       } else {
         try {
           // parse the stream name out of the event
@@ -495,10 +498,9 @@ export function processEvent(event: DynamoDBStreamEvent, serviceName: string, st
         deliveryStreamName
     )
   }
-  async.map<DynamoDBRecord, deagg.UserRecord[], string>(
+  async.map<DynamoDBRecord, (deagg.UserRecord | DynamoDBDataItem)[], string>(
     event.Records,
-    function (record: DynamoDBRecord, callback: (err?: string | null, result?: deagg.UserRecord[]) => void) {
-      const recordCallback = callback
+    function (record: DynamoDBRecord, recordCallback: (err?: string | null, result?: (deagg.UserRecord | DynamoDBDataItem)[]) => void) {
       // resolve the record data based on the service
       if (serviceName === c.KINESIS_SERVICE_NAME) {
         // run the record through the KPL deaggregator
@@ -525,8 +527,8 @@ export function processEvent(event: DynamoDBStreamEvent, serviceName: string, st
                 writableEventTypes
             )
           }
-          const data = createDynamoDataItem(record)
-          recordCallback(null, data)
+          const item = createDynamoDataItem(record)
+          recordCallback(null, [item])
         } else {
           if (debug) {
             console.log(
@@ -542,20 +544,29 @@ export function processEvent(event: DynamoDBStreamEvent, serviceName: string, st
         }
       }
     },
-    function (err?: string | null, results?: Array<deagg.UserRecord[] | undefined>) {
+    // recordCallback
+    function (err?: string | null, results?: Array<(deagg.UserRecord | DynamoDBDataItem)[] | undefined>) {
       const extractedUserRecords = results ?? []
       if (err) {
         callback(err)
       } else {
         // extractedUserRecords will be array[array[Object]], so
         // flatten to array[Object]
-        const userRecords: deagg.UserRecord[] = extractedUserRecords.filter(notEmpty).flat()
+        const userRecords: (deagg.UserRecord | DynamoDBDataItem)[] = extractedUserRecords.filter(notEmpty).flat()
         // transform the user records
         transform.transformRecords(
           serviceName,
           useTransformer,
           userRecords,
           function (err: Error | string | null, transformed?: (Buffer | undefined)[]) {
+            if (err) {
+              console.error(err)
+            }
+            if (transformed === undefined) {
+              // Nothing to route
+              callback(err)
+              return
+            }
             // apply the routing function that has been configured
             router.routeToDestination(
               deliveryStreamName,
@@ -566,7 +577,7 @@ export function processEvent(event: DynamoDBStreamEvent, serviceName: string, st
                   // we are still going to route to the default stream
                   // here, as a bug in routing implementation cannot
                   // result in lost data!
-                  console.log(err)
+                  console.error(err)
                   // discard the delivery map we might have received
                   routingDestinationMap[deliveryStreamName] = transformed
                 }
@@ -577,12 +588,12 @@ export function processEvent(event: DynamoDBStreamEvent, serviceName: string, st
                     const records = routingDestinationMap[destinationStream]
                     processFinalRecords(records, streamName, destinationStream, asyncCallback)
                   },
-                  function (err?: string | null, results?: any[]) {
+                  function (err?: string | null, results?: (BatchItem | undefined)[]) {
                     if (err) {
                       callback(err)
                     } else {
                       if (debug) {
-                        results?.map(function (item: BatchItem) {
+                        results?.map(function (item?: BatchItem) {
                           console.log(stringify(item))
                         })
                       }
