@@ -12,6 +12,7 @@
     "moduleResolution": "node",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
+    "noErrorTruncation": true,
     "preserveWatchOutput": true,
     "skipLibCheck": true,
     "strict": true
