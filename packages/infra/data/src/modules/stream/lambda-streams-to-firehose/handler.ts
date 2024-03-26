@@ -100,8 +100,8 @@ export async function init(): Promise<FirehoseClient> {
 export type DynamoDBDataItem = StreamRecord & { eventName?: "INSERT" | "MODIFY" | "REMOVE", userIdentity?: any }
 
 /**
- * Function to create a condensed version of a dynamodb change record. This is
- * returned as a base64 encoded Buffer so as to implement the same interface
+ * Create a condensed version of a dynamodb change record.
+ * This is returned as a base64 encoded Buffer so as to implement the same interface
  * used for transforming kinesis records
  */
 export function createDynamoDataItem(record: DynamoDBRecord): DynamoDBDataItem {
@@ -216,9 +216,10 @@ export interface BatchItem {
 /**
  * Convenience function which generates the batch set with low and high offsets
  * for pushing data to Firehose in blocks of FIREHOSE_MAX_BATCH_COUNT and
- * staying within the FIREHOSE_MAX_BATCH_BYTES max payload size. Batch ranges
- * are calculated to be compatible with the array.slice() function which uses a
- * non-inclusive upper bound
+ * staying within the FIREHOSE_MAX_BATCH_BYTES max payload size.
+ * 
+ * Batch ranges are calculated to be compatible with the array.slice() function which uses a
+ * non-inclusive upper bound.
  */
 export function getBatchRanges(records: Uint8Array[]): BatchItem[] {
   const batches = []
@@ -263,12 +264,16 @@ export function getBatchRanges(records: Uint8Array[]): BatchItem[] {
 }
 
 /**
- * Function to process a stream event and generate requests to forward the
- * embedded records to Kinesis Firehose. Before delivery, the user specified
- * transformer will be invoked, and the messages will be passed through a router
- * which can determine the delivery stream dynamically if needed
+ * Process a stream event and generate requests to forward the embedded records to Firehose.
+ * Before delivery, the user specified transformer will be invoked,
+ * and the messages will be passed through a router which can determine the delivery stream dynamically if needed.
  */
-export async function processEvent(event: DynamoDBStreamEvent, serviceName: string, streamName: string, firehoseClient: FirehoseClient) {
+export async function processEvent(
+  event: DynamoDBStreamEvent,
+  serviceName: string,
+  streamName: string,
+  firehoseClient: FirehoseClient
+) {
   const itemsToHandle: DynamoDBDataItem[] = []
   if (debug) {
     console.log('Processing event')
@@ -367,7 +372,7 @@ async function handleResults(
 }
 
 /**
- * function which forwards a batch of records to a firehose delivery stream
+ * Forward a batch of records to a firehose delivery stream
  */
 export async function writeToFirehose(
   firehoseClient: FirehoseClient,
@@ -387,7 +392,6 @@ export async function writeToFirehose(
     console.log('Writing to firehose delivery stream (attempt ' + numRetries + ')')
     console.log(stringify(putRecordBatchParams))
   }
-  const startTime = new Date().getTime()
   const cmd = new PutRecordBatchCommand(putRecordBatchParams)
   try {
     if (debug) {
@@ -395,12 +399,20 @@ export async function writeToFirehose(
       console.log('Cmd:', cmd)
       console.log('Sending cmd at: ' + new Date())
     }
+    const startTime = new Date().getTime()
 
     // TODO FIXME causes process.exit
     const resp = await firehoseClient.send(cmd)
 
+    const elapsedMs = new Date().getTime() - startTime
     if (debug) {
       console.log('Finished cmd at:' + new Date())
+      const successCount = Math.max(0, (firehoseBatch?.length ?? 0) - (resp.FailedPutCount ?? 0))
+      if (successCount > 0) {
+        console.log(
+          'Successfully wrote ' + successCount + ' records to Firehose ' + deliveryStreamName + ' in ' + elapsedMs + ' ms'
+        )
+      }
     }
     if (resp.FailedPutCount !== 0) {
       console.log(
@@ -415,28 +427,19 @@ export async function writeToFirehose(
             failedBatch.push(firehoseBatch?.[index])
           }
         })
-        setTimeout(
-          await writeToFirehose.bind(
-            undefined,
-            firehoseClient,
-            failedBatch,
-            streamName,
-            deliveryStreamName,
-            numRetries + 1
-          ),
-          c.RETRY_INTERVAL_MS
+        const recurseWithFailed: () => Promise<PutRecordBatchCommandOutput | undefined> = writeToFirehose.bind(
+          undefined,
+          firehoseClient,
+          failedBatch,
+          streamName,
+          deliveryStreamName,
+          numRetries + 1
         )
+        await new Promise(r => setTimeout(r, c.RETRY_INTERVAL_MS))
+        return await recurseWithFailed()
       } else {
         console.log('Maximum retries reached, giving up')
         leftover = resp
-      }
-    } else {
-      if (debug) {
-        const elapsedMs = new Date().getTime() - startTime
-        console.log(
-          'Successfully wrote ' + firehoseBatch?.length ??
-            0 + ' records to Firehose ' + deliveryStreamName + ' in ' + elapsedMs + ' ms'
-        )
       }
     }
   } catch (err) {
@@ -447,7 +450,7 @@ export async function writeToFirehose(
 }
 
 /**
- * function which handles the output of the defined transformation on each record.
+ * Handle output of the defined transformation on each record.
  */
 export async function processFinalRecords(
   firehoseClient: FirehoseClient,
