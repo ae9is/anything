@@ -33,10 +33,10 @@ export function ItemGrid({
       limit: 10,
     },
     body: {
-      sortKeyExpression: defaultFilter.sortKeyExpression,
-      filterExpression: defaultFilter.filterExpression,
-      attributeNames: defaultFilter.attributeNames,
-      attributeValues: defaultFilter.attributeValues,
+      sortKeyExpression: filter.sortKeyExpression,
+      filterExpression: filter.filterExpression,
+      attributeNames: filter.attributeNames,
+      attributeValues: filter.attributeValues,
     },
   }
 
