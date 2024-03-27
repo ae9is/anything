@@ -102,7 +102,7 @@ export function ArraySelect({
     return {
       ...theme,
       borderRadius: 8,
-      // Match colours in: src/app/styles.css, src/lib/theme.ts
+      // Match colours in: src/app/styles.css, src/pages/styles.css, src/lib/theme.ts
       colors: {
         ...theme.colors,
         primary: 'hsl(var(--p) / 0.8)', // Option focus background colour, input focus border colour; 0.8 to match data grid
