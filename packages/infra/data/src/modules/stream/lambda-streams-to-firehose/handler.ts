@@ -53,7 +53,10 @@ export function setRouter(router: router.RoutingFunction) {
 }
 
 // StreamRecord plus a couple attributes from DynamoDBRecord
-export type DynamoDBDataItem = StreamRecord & { eventName?: "INSERT" | "MODIFY" | "REMOVE", userIdentity?: any }
+export type DynamoDBDataItem = StreamRecord & {
+  eventName?: 'INSERT' | 'MODIFY' | 'REMOVE'
+  userIdentity?: any
+}
 
 export async function handler(event: DynamoDBStreamEvent, context: any) {
   if (debug) {
@@ -80,12 +83,7 @@ export async function handler(event: DynamoDBStreamEvent, context: any) {
     try {
       const firehoseClient = await init()
       const deliveryStreamName = getStreamName(event.Records[0].eventSourceARN)
-      await processEvent(
-        event,
-        serviceName,
-        deliveryStreamName,
-        firehoseClient
-      )
+      await processEvent(event, serviceName, deliveryStreamName, firehoseClient)
       onCompletion(context, null, c.OK, 'Finished processing records')
     } catch (err) {
       onCompletion(context, String(err), c.ERROR, 'Error processing records')
@@ -215,17 +213,14 @@ function createDynamoDataItem(record: DynamoDBRecord): DynamoDBDataItem {
 async function handleResults(
   firehoseClient: FirehoseClient,
   streamName: string,
-  results?: DynamoDBDataItem[],
+  results?: DynamoDBDataItem[]
 ) {
   const extractedUserRecords = results ?? []
   // ExtractedUserRecords will be array[array[Object]], so flatten to array[Object]
   const userRecords: DynamoDBDataItem[] = extractedUserRecords.filter(notEmpty).flat()
   // Transform the user records
   try {
-    const transformed: Buffer[] = transform.transformRecords(
-      useTransformer,
-      userRecords
-    )
+    const transformed: Buffer[] = transform.transformRecords(useTransformer, userRecords)
     if (transformed === undefined) {
       if (debug) {
         console.log('Nothing to route')
@@ -235,20 +230,11 @@ async function handleResults(
     // Apply the routing function that has been configured
     let routingDestinationMap: router.RoutingMap = {}
     try {
-      routingDestinationMap = router.routeToDestination(
-        streamName,
-        transformed,
-        useRouter,
-      )
+      routingDestinationMap = router.routeToDestination(streamName, transformed, useRouter)
       // Send the routed records to the delivery processor
       for (const destinationStream of Object.keys(routingDestinationMap)) {
         const records = routingDestinationMap[destinationStream]
-        await processFinalRecords(
-          firehoseClient,
-          records,
-          streamName,
-          destinationStream
-        )
+        await processFinalRecords(firehoseClient, records, streamName, destinationStream)
       }
     } catch (err) {
       // We are still going to route to the default stream here,
@@ -269,7 +255,7 @@ async function processFinalRecords(
   firehoseClient: FirehoseClient,
   records: Uint8Array[],
   streamName: string,
-  deliveryStreamName: string,
+  deliveryStreamName: string
 ) {
   if (debug) {
     console.log('Delivering records to destination Streams')
@@ -286,7 +272,9 @@ async function processFinalRecords(
   try {
     for (const item of batches) {
       if (debug) {
-        console.log(`Forwarding records ${item.lowOffset}: ${item.highOffset} - ${item.sizeBytes} Bytes`)
+        console.log(
+          `Forwarding records ${item.lowOffset}: ${item.highOffset} - ${item.sizeBytes} Bytes`
+        )
       }
       // Grab subset of the records assigned for this batch and push to firehose
       const processRecords = records.slice(item.lowOffset, item.highOffset)
@@ -327,7 +315,7 @@ interface BatchItem {
  * Convenience function which generates the batch set with low and high offsets
  * for pushing data to Firehose in blocks of FIREHOSE_MAX_BATCH_COUNT and
  * staying within the FIREHOSE_MAX_BATCH_BYTES max payload size.
- * 
+ *
  * Batch ranges are calculated to be compatible with the array.slice() function which uses a
  * non-inclusive upper bound.
  */
@@ -424,7 +412,7 @@ async function writeToFirehose(
             failedBatch.push(firehoseBatch?.[index])
           }
         })
-        await new Promise(r => setTimeout(r, c.RETRY_INTERVAL_MS))
+        await new Promise((r) => setTimeout(r, c.RETRY_INTERVAL_MS))
         return await writeToFirehose(
           firehoseClient,
           failedBatch,

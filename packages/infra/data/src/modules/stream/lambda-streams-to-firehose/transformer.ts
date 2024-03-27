@@ -95,7 +95,7 @@ function filter(object: any, filterKeys: string[]) {
 
 export function transformRecords(
   transformer: TransformerFunction,
-  userRecords: DynamoDBDataItem[],
+  userRecords: DynamoDBDataItem[]
 ): Buffer[] {
   const transformedRecords: Buffer[] = []
   for (const userRecord of userRecords) {
