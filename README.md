@@ -121,3 +121,9 @@ This Turborepo includes the following packages and apps:
 - `eslint-config-*`: ESLint configurations
 - `tsconfig`: tsconfig.json's used throughout the monorepo
 - `jest-presets`: Jest config
+
+A submodule `lambda-streams-to-firehose` is also included under `infra/data`. If git didn't fetch it automatically for you, get it using:
+
+```bash
+git submodule update --init --recursive
+```

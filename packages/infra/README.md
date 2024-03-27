@@ -7,7 +7,7 @@ Database resources are defined in `packages/api` to collocate the database schem
 with the migrations and seeding code needed for offline development plugins.
 
 - `auth` - Authentication and authorisation resources
-- `data` - Data lake storage and analytics resources
+- `data` - Data lake storage and analytics resources, contains a git submodule
 - `web` - Web client hosting resources
 - `database` - DynamoDB database
 - `dash` - Live dashboard service via Grafana, requires additional setup
