@@ -1,0 +1,3 @@
+[submodule "packages/infra/data/src/modules/stream/lambda-streams-to-firehose"]
+	path = packages/infra/data/src/modules/stream/lambda-streams-to-firehose
+	url = https://github.com/ae9is/lambda-streams-to-firehose
