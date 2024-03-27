@@ -11,10 +11,6 @@ export function defaultRouting(defaultDeliveryStreamName: string, records: Buffe
 
 /**
  * Apply a routing function to a group of records
- *
- * @param defaultDeliveryStreamName
- * @param records
- * @param routingFunction
  */
 export function routeToDestination(defaultDeliveryStreamName: string, records: Buffer[], routingFunction: RoutingFunction) {
   const routingMap = routingFunction(defaultDeliveryStreamName, records)

@@ -19,23 +19,25 @@ const transformerFunctions = {
   'flattenDynamoDBTransformer': flattenDynamoDBTransformer,
 }
 
-// Emit buffer as text with newline
+/** Emit buffer as text with newline */
 export function addNewlineTransformer(data: TransformerData) {
   return Buffer.from(data + '\n', c.targetEncoding)
 }
 
-// Convert JSON data to its String representation
+/** Convert JSON data to its String representation */
 export function jsonToStringTransformer(data: TransformerData) {
   return Buffer.from(JSON.stringify(data) + '\n', c.targetEncoding)
 }
 
-// Just wrap the object in a buffer
+/** Just wrap the object in a buffer */
 export function doNothingTransformer(data: TransformerData) {
   return Buffer.from(data + '', c.targetEncoding)
 }
 
-// DynamoDB Streams emit typed low-level JSON data, like: {"key":{"S":"value"}}
-// This transformer unboxes that typing.
+/**
+ * DynamoDB Streams emit typed low-level JSON data, like: {"key":{"S":"value"}}
+ * This transformer unboxes that typing.
+ */
 export function unmarshallDynamoDBTransformer(data: TransformerData) {
   let json: any
   if (typeof data === 'string' || data instanceof String) {

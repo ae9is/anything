@@ -38,45 +38,27 @@ const writableEventTypes = process.env.WRITABLE_EVENT_TYPES
   ? process.env.WRITABLE_EVENT_TYPES.split(',')
   : allEventTypes
 
-/* Configure transform utility */
+// Configure transform utility
 import * as transform from './transformer'
 
-/*
- * create the transformer instance - change this to be regexToDelimter, or your
- * own new function
- */
+// Create the transformer instance - change this to be regexToDelimter, or your own new function
 let useTransformer: transform.TransformerFunction
 
 export function setTransformer(transformer: transform.TransformerFunction) {
   useTransformer = transformer
 }
 
-/*
- * Configure destination router. By default all records route to the configured
- * stream
- */
+// Configure destination router. By default all records route to the configured stream
 import * as router from './router'
 
-/*
- * create the routing rule reference that you want to use. This shows the
- * default router
- */
+// Create the routing rule reference that you want to use. This uses the default router.
 let useRouter = router.defaultRouting
 
 export function setRouter(router: router.RoutingFunction) {
   useRouter = router
 }
 
-// example for using routing based on messages attributes
-// var attributeMap = {
-// "binaryValue" : {
-// "true" : "TestRouting-route-A",
-// "false" : "TestRouting-route-B"
-// }
-// };
-// var useRouter = router.routeByAttributeMapping.bind(undefined, attributeMap);
-
-// StreamRecord plus a couple attributes from DynamoDBRecord.
+// StreamRecord plus a couple attributes from DynamoDBRecord
 export type DynamoDBDataItem = StreamRecord & { eventName?: "INSERT" | "MODIFY" | "REMOVE", userIdentity?: any }
 
 export async function handler(event: DynamoDBStreamEvent, context: any) {
@@ -128,7 +110,7 @@ async function init(): Promise<FirehoseClient> {
     console.log('AWS Streams to Firehose Forwarder v' + pjson.version + ' in ' + setRegion)
   }
   useTransformer = transform.setupTransformer()
-  // Configure a new connection to firehose, if one has not been provided
+  // Configure a new connection to firehose
   if (debug) {
     console.log('Connecting to Amazon Data Firehose in ' + setRegion)
   }
@@ -192,7 +174,7 @@ async function processEvent(
     )
   }
   for (const record of event.Records) {
-    // dynamo update stream record
+    // DynamoDB update stream record
     if (record?.eventName && writableEventTypes.includes(record.eventName)) {
       if (debug) {
         console.log(
@@ -226,13 +208,12 @@ function createDynamoDataItem(record: DynamoDBRecord): DynamoDBDataItem {
   if (record?.dynamodb?.OldImage) {
     output.OldImage = record.dynamodb.OldImage
   }
-  // add the sequence number and other metadata
+  // Add the sequence number and other metadata
   output.SequenceNumber = record?.dynamodb?.SequenceNumber
   output.SizeBytes = record?.dynamodb?.SizeBytes
   output.ApproximateCreationDateTime = record?.dynamodb?.ApproximateCreationDateTime
   output.eventName = record.eventName
-  // adding userIdentity, used by DynamoDB TTL to indicate removal by TTL as
-  // opposed to user initiated remove
+  // Adding userIdentity, used by DynamoDB TTL to indicate removal by TTL as opposed to user initiated remove
   output.userIdentity = record.userIdentity
   return output
 }
@@ -243,9 +224,9 @@ async function handleResults(
   results?: DynamoDBDataItem[],
 ) {
   const extractedUserRecords = results ?? []
-  // extractedUserRecords will be array[array[Object]], so flatten to array[Object]
+  // ExtractedUserRecords will be array[array[Object]], so flatten to array[Object]
   const userRecords: DynamoDBDataItem[] = extractedUserRecords.filter(notEmpty).flat()
-  // transform the user records
+  // Transform the user records
   try {
     const transformed: Buffer[] = transform.transformRecords(
       useTransformer,
@@ -257,7 +238,7 @@ async function handleResults(
       }
       return
     }
-    // apply the routing function that has been configured
+    // Apply the routing function that has been configured
     let routingDestinationMap: router.RoutingMap = {}
     try {
       routingDestinationMap = router.routeToDestination(
@@ -265,7 +246,7 @@ async function handleResults(
         transformed,
         useRouter,
       )
-      // send the routed records to the delivery processor
+      // Send the routed records to the delivery processor
       for (const destinationStream of Object.keys(routingDestinationMap)) {
         const records = routingDestinationMap[destinationStream]
         await processFinalRecords(
@@ -276,10 +257,10 @@ async function handleResults(
         )
       }
     } catch (err) {
-      // we are still going to route to the default stream here,
-      // as a bug in routing implementation cannot result in lost data!
+      // We are still going to route to the default stream here,
+      //  as a bug in routing implementation cannot result in lost data!
       console.error(err)
-      // discard the delivery map we might have received
+      // Discard the delivery map we might have received
       routingDestinationMap[streamName] = transformed
     }
   } catch (err) {
@@ -299,7 +280,7 @@ async function processFinalRecords(
   if (debug) {
     console.log('Delivering records to destination Streams')
   }
-  // get the set of batch offsets based on the transformed record sizes
+  // Get the set of batch offsets based on the transformed record sizes
   const batches = getBatchRanges(records)
   if (debug) {
     console.log(stringify(batches))
@@ -313,9 +294,9 @@ async function processFinalRecords(
       if (debug) {
         console.log(`Forwarding records ${item.lowOffset}: ${item.highOffset} - ${item.sizeBytes} Bytes`)
       }
-      // grab subset of the records assigned for this batch and push to firehose
+      // Grab subset of the records assigned for this batch and push to firehose
       const processRecords = records.slice(item.lowOffset, item.highOffset)
-      // decorate the array for the Firehose API
+      // Decorate the array for the Firehose API
       const decorated: _Record[] = []
       processRecords.map(function (item: Uint8Array | undefined) {
         decorated.push({
@@ -364,10 +345,10 @@ function getBatchRanges(records: Uint8Array[]): BatchItem[] {
   let recordSize
   let nextRecordSize
   for (let i = 0; i < records.length; i++) {
-    // need to calculate the total record size for the call to Firehose on
-    // the basis of of non-base64 encoded values
+    // Need to calculate the total record size for the call to Firehose on
+    //  the basis of of non-base64 encoded values
     recordSize = Buffer.byteLength(records[i].toString(), c.targetEncoding)
-    // batch always has 1 entry, so add it first
+    // Batch always has 1 entry, so add it first
     batchCurrentBytes += recordSize
     batchCurrentCount += 1
     // To get next record size inorder to calculate the FIREHOSE_MAX_BATCH_BYTES
@@ -376,8 +357,7 @@ function getBatchRanges(records: Uint8Array[]): BatchItem[] {
     } else {
       nextRecordSize = Buffer.byteLength(records[i + 1].toString(), c.targetEncoding)
     }
-    // generate a new batch marker every 4MB or 500 records, whichever comes
-    // first
+    // Generate a new batch marker every 4MB or 500 records, whichever comes first
     if (
       batchCurrentCount === c.FIREHOSE_MAX_BATCH_COUNT ||
       batchCurrentBytes + nextRecordSize > c.FIREHOSE_MAX_BATCH_BYTES ||
@@ -385,11 +365,11 @@ function getBatchRanges(records: Uint8Array[]): BatchItem[] {
     ) {
       batches.push({
         lowOffset: currentLowOffset,
-        // annoying special case handling for record sets of size 1
+        // Annoying special case handling for record sets of size 1
         highOffset: i + 1,
         sizeBytes: batchCurrentBytes,
       })
-      // reset accumulators
+      // Reset accumulators
       currentLowOffset = i + 1
       batchCurrentBytes = 0
       batchCurrentCount = 0
@@ -410,7 +390,7 @@ async function writeToFirehose(
 ) {
   let leftover: PutRecordBatchCommandOutput | undefined = undefined
   const numRetries = retries ?? 0
-  // write the batch to firehose with putRecordBatch
+  // Write the batch to firehose with putRecordBatch
   const putRecordBatchParams: PutRecordBatchCommandInput = {
     DeliveryStreamName: deliveryStreamName.substring(0, 64),
     Records: firehoseBatch,
@@ -444,7 +424,7 @@ async function writeToFirehose(
           0 + ' records. Retrying to write...'
       )
       if (numRetries < c.MAX_RETRY_ON_FAILED_PUT) {
-        // extract the failed records
+        // Extract the failed records
         const failedBatch: _Record[] = []
         resp.RequestResponses?.map(function (item: any, index: number) {
           if (item.hasOwnProperty('ErrorCode') && firehoseBatch?.[index]) {
