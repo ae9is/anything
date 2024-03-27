@@ -13,7 +13,7 @@ describe('Transformer Tests', function () {
       const t = await transform.setupTransformer()
       assert.equal(
         t.name,
-        'bound ' + c.transformerRegistry.jsonToStringTransformer,
+        c.transformerRegistry.jsonToStringTransformer,
         ' Transformer Incorrectly Set '
       )
     })
@@ -24,7 +24,7 @@ describe('Transformer Tests', function () {
       const t = await transform.setupTransformer()
       assert.equal(
         t.name,
-        'bound ' + c.transformerRegistry.addNewlineTransformer,
+        c.transformerRegistry.addNewlineTransformer,
         ' Transformer Incorrectly Set '
       )
     })
@@ -35,7 +35,7 @@ describe('Transformer Tests', function () {
       const t = await transform.setupTransformer()
       assert.equal(
         t.name,
-        'bound ' + c.transformerRegistry.doNothingTransformer,
+        c.transformerRegistry.doNothingTransformer,
         ' Transformer Incorrectly Set '
       )
     })
@@ -46,7 +46,7 @@ describe('Transformer Tests', function () {
       const t = await transform.setupTransformer()
       assert.equal(
         t.name,
-        'bound ' + c.transformerRegistry.doNothingTransformer,
+        c.transformerRegistry.doNothingTransformer,
         ' Transformer Incorrectly Set '
       )
     })
