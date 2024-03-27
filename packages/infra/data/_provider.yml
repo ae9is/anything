@@ -1,8 +1,5 @@
 name: aws
-#runtime: nodejs18.x
-# Need to rewrite handler or use node 16, as node 18 runtime doesn't have 
-#  aws-sdk (i.e. AWS SDK v2) bundled
-runtime: nodejs16.x
+runtime: nodejs20.x
 #memorySize: 256
 stage: ${env:STAGE, 'dev'}
 region: ${env:AWS_REGION}
@@ -19,6 +16,7 @@ environment:
   AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
   TRANSFORMER_FUNCTION: flattenDynamoDBTransformer
   DEFAULT_DELIVERY_STREAM: ${param:streamTableName}
+  #DEBUG: true
 iam:
   role:
     statements:

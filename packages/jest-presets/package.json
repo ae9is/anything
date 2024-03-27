@@ -6,9 +6,9 @@
     "update-packages": "ncu -u"
   },
   "dependencies": {
-    "ts-jest": "^29.1.1"
+    "ts-jest": "^29.1.2"
   },
   "devDependencies": {
-    "npm-check-updates": "^16.10.18"
+    "npm-check-updates": "^16.14.17"
   }
 }

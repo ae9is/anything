@@ -1,19 +1,21 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env.*local", "**/.env"],
-  "globalEnv": ["CHECK_BUNDLE_SIZE"],
+  "globalEnv": [
+    "CHECK_BUNDLE_SIZE",
+    "DEBUG",
+    "WRITABLE_EVENT_TYPES",
+    "AWS_REGION",
+    "MAX_RETRY_ON_FAILED_PUT",
+    "RETRY_INTERVAL_MS",
+    "AWS_REGION",
+    "DEFAULT_DELIVERY_STREAM",
+    "EXTRACT_KEYS"
+  ],
   "pipeline": {
     "build": {
       "env": ["CHECK_BUNDLE_SIZE"],
-      "outputs": [
-        "dist/**",
-        ".next/**",
-        "!.next/cache/**",
-        "build/**",
-        "api/**",
-        "public/build/**"
-      ],
-      "dependsOn": ["^build"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "build/**", "api/**", "public/build/**"]
     },
     "test": {
       "outputs": ["coverage/**"],
@@ -23,6 +25,7 @@
       "dependsOn": ["^build"]
     },
     "dev": {
+      "env": ["AWS_REGION"],
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
@@ -31,9 +34,9 @@
       "cache": false
     },
     "update-packages": {
-      "outputs": [
-        "package.json"
-      ]
+      "outputs": ["package.json"]
     }
   }
 }
+
+
