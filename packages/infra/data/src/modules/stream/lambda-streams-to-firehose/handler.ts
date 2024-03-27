@@ -212,7 +212,7 @@ function createDynamoDataItem(record: DynamoDBRecord): DynamoDBDataItem {
 
 async function handleResults(
   firehoseClient: FirehoseClient,
-  streamName: string,
+  deliveryStreamName: string,
   results?: DynamoDBDataItem[]
 ) {
   const extractedUserRecords = results ?? []
@@ -229,19 +229,27 @@ async function handleResults(
     }
     // Apply the routing function that has been configured
     let routingDestinationMap: router.RoutingMap = {}
+    let hadError = false
     try {
-      routingDestinationMap = router.routeToDestination(streamName, transformed, useRouter)
+      routingDestinationMap = router.routeToDestination(deliveryStreamName, transformed, useRouter)
       // Send the routed records to the delivery processor
       for (const destinationStream of Object.keys(routingDestinationMap)) {
-        const records = routingDestinationMap[destinationStream]
-        await processFinalRecords(firehoseClient, records, streamName, destinationStream)
+        try {
+          const records = routingDestinationMap[destinationStream]
+          await processFinalRecords(firehoseClient, records, deliveryStreamName, destinationStream)
+        } catch (err) {
+          hadError = true
+        }
       }
     } catch (err) {
-      // We are still going to route to the default stream here,
-      //  as a bug in routing implementation cannot result in lost data!
       console.error(err)
-      // Discard the delivery map we might have received
-      routingDestinationMap[streamName] = transformed
+      hadError = true
+    }
+    if (hadError) {
+      // If routing to any of the destination streams failed, or the whole thing failed, 
+      //  also route all records to the default delivery stream to avoid losing data.
+      // If frequent failures were expected, this could be reworked to route only the failed batches of records.
+      await processFinalRecords(firehoseClient, transformed, deliveryStreamName, deliveryStreamName)
     }
   } catch (err) {
     console.error(err)
@@ -270,6 +278,7 @@ async function processFinalRecords(
   // were received by this function.
   let successCount = 0
   try {
+    let failedCount = 0
     for (const item of batches) {
       if (debug) {
         console.log(
@@ -285,23 +294,25 @@ async function processFinalRecords(
           Data: item,
         })
       })
-      try {
-        const resp = await writeToFirehose(
-          firehoseClient,
-          decorated,
-          streamName,
-          deliveryStreamName
-        )
-        successCount += 1
-      } catch (err) {
-        break
-      }
+      const failedRecords = await writeToFirehose(
+        firehoseClient,
+        decorated,
+        streamName,
+        deliveryStreamName
+      )
+      // Keep track of (partially) failed batches, but continue processing for now and throw exception at end
+      failedCount += failedRecords?.FailedPutCount ?? 0
+      successCount += 1
+    }
+    if (failedCount > 0) {
+      throw Error(`Failed writing a batch with ${failedCount} failed records`)
     }
     console.log(
       `Event forwarding complete. Forwarded ${successCount} batches comprising ${records.length} records to Firehose ${deliveryStreamName}`
     )
   } catch (err) {
     console.log(`Forwarding failure after ${successCount} successful batches`)
+    throw err
   }
 }
 
