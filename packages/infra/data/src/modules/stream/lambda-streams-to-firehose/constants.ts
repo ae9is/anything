@@ -32,3 +32,6 @@ export const setRegion = process.env['AWS_REGION'] || 'us-east-1'
 export const DEFAULT_DELIVERY_STREAM = process.env['DEFAULT_DELIVERY_STREAM'] || 'anything-dev-abc123-main'
 // For flattenDynamoDBTransformer only:
 export const EXTRACT_KEYS = process.env['EXTRACT_KEYS'] || 'modified,author,type,ctype,deleted,currentVersion'
+export const DEBUG = process.env.DEBUG || false
+const allEventTypes = ['INSERT', 'MODIFY', 'REMOVE']
+export const writableEventTypes = process.env['WRITABLE_EVENT_TYPES']?.split(',') ?? allEventTypes

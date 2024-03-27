@@ -5,10 +5,9 @@ import { unmarshall } from '@aws-sdk/util-dynamodb'
 import * as c from './constants'
 import { DynamoDBDataItem } from './handler'
 
-const debug = process.env.DEBUG || false
+const debug = c.DEBUG
 
 type TransformerData = string | DynamoDBDataItem
-
 export type TransformerFunction = (data: TransformerData) => Buffer
 
 const transformerFunctions = {

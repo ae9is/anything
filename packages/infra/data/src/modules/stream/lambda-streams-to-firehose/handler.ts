@@ -31,16 +31,12 @@ import {
 import { notEmpty, stringify } from 'utils'
 import * as pjson from '../../../../package.json'
 import * as c from './constants'
+import * as transform from './transformer'
+import * as router from './router'
 
-const debug = process.env.DEBUG || false
-const allEventTypes = ['INSERT', 'MODIFY', 'REMOVE']
-const writableEventTypes = process.env.WRITABLE_EVENT_TYPES
-  ? process.env.WRITABLE_EVENT_TYPES.split(',')
-  : allEventTypes
+const debug = c.DEBUG
 
 // Configure transform utility
-import * as transform from './transformer'
-
 // Create the transformer instance - change this to be regexToDelimter, or your own new function
 let useTransformer: transform.TransformerFunction
 
@@ -49,8 +45,6 @@ export function setTransformer(transformer: transform.TransformerFunction) {
 }
 
 // Configure destination router. By default all records route to the configured stream
-import * as router from './router'
-
 // Create the routing rule reference that you want to use. This uses the default router.
 let useRouter = router.defaultRouting
 
@@ -175,10 +169,10 @@ async function processEvent(
   }
   for (const record of event.Records) {
     // DynamoDB update stream record
-    if (record?.eventName && writableEventTypes.includes(record.eventName)) {
+    if (record?.eventName && c.writableEventTypes.includes(record.eventName)) {
       if (debug) {
         console.log(
-          `Processing record: ${stringify(record)} with event type: ${record.eventName} when writable events are: ${writableEventTypes}`
+          `Processing record: ${stringify(record)} with event type: ${record.eventName} when writable events are: ${c.writableEventTypes}`
         )
       }
       const item = createDynamoDataItem(record)
@@ -186,7 +180,7 @@ async function processEvent(
     } else {
       if (debug) {
         console.log(
-          `Skipping record: ${stringify(record)} with event type: ${record.eventName} when writable events are: ${writableEventTypes}`
+          `Skipping record: ${stringify(record)} with event type: ${record.eventName} when writable events are: ${c.writableEventTypes}`
         )
       }
     }
@@ -396,7 +390,7 @@ async function writeToFirehose(
     Records: firehoseBatch,
   }
   if (debug) {
-    console.log('Writing to firehose delivery stream (attempt ' + numRetries + ')')
+    console.log(`Writing to firehose delivery stream (attempt ${numRetries})`)
     console.log(stringify(putRecordBatchParams))
   }
   const cmd = new PutRecordBatchCommand(putRecordBatchParams)
@@ -420,8 +414,7 @@ async function writeToFirehose(
     }
     if (resp.FailedPutCount !== 0) {
       console.log(
-        'Failed to write ' + resp.FailedPutCount + '/' + firehoseBatch?.length ??
-          0 + ' records. Retrying to write...'
+        `Failed to write ${resp.FailedPutCount}/${firehoseBatch?.length ?? 0} records. Retrying to write...`
       )
       if (numRetries < c.MAX_RETRY_ON_FAILED_PUT) {
         // Extract the failed records
