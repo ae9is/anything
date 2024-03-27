@@ -11,6 +11,14 @@ type TransformerData = string | DynamoDBDataItem
 
 export type TransformerFunction = (data: TransformerData) => Buffer
 
+const transformerFunctions = {
+  'doNothingTransformer': doNothingTransformer,
+  'addNewlineTransformer': addNewlineTransformer,
+  'jsonToStringTransformer': jsonToStringTransformer,
+  'unmarshallDynamoDBTransformer': unmarshallDynamoDBTransformer,
+  'flattenDynamoDBTransformer': flattenDynamoDBTransformer,
+}
+
 // Emit buffer as text with newline
 export function addNewlineTransformer(data: TransformerData) {
   return Buffer.from(data + '\n', c.targetEncoding)
@@ -48,12 +56,14 @@ export function unmarshallDynamoDBTransformer(data: TransformerData) {
   return Buffer.from(JSON.stringify(unmarshalled) + '\n', c.targetEncoding)
 }
 
-// Unmarshall DynamoDB streams data, and flatten/filter data, extracting only the specified keys from NewImage.
-// Data in Keys (i.e. id, sort) will always be extracted but can be overwritten by extract keys for NewImage if specified.
-// 
-// Also extracts data.eventName (INSERT, MODIFY, REMOVE). It's missing in the docs but present in the actual stream record.
-// ref: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_Record.html
-//      https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_StreamRecord.html
+/**
+ * Unmarshall DynamoDB streams data, and flatten/filter data, extracting only the specified keys from NewImage.
+ * Data in Keys (i.e. id, sort) will always be extracted but can be overwritten by extract keys for NewImage if specified.
+ * 
+ * Also extracts data.eventName (INSERT, MODIFY, REMOVE). It's missing in the docs but present in the actual stream record.
+ * ref: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_Record.html
+ *      https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_streams_StreamRecord.html
+ */
 export function flattenDynamoDBTransformer(data: TransformerData) {
   let extractKeys = c.EXTRACT_KEYS?.split(',')
   if (!extractKeys || extractKeys.length <= 0) {
@@ -72,7 +82,9 @@ export function flattenDynamoDBTransformer(data: TransformerData) {
   return Buffer.from(JSON.stringify(filtered) + '\n', c.targetEncoding)
 }
 
-// Return an object with only specified keys in it
+/**
+ * Return an object with only specified keys in it
+ */
 function filter(object: any, filterKeys: string[]) {
   return Object.keys(object).filter(key => filterKeys.includes(key)).reduce((filtered: any, key: string) => {
     filtered[key] = object[key]
@@ -80,16 +92,16 @@ function filter(object: any, filterKeys: string[]) {
   }, {})
 }
 
-export async function transformRecords(
+export function transformRecords(
   transformer: TransformerFunction,
   userRecords: DynamoDBDataItem[],
-): Promise<Buffer[]> {
+): Buffer[] {
   const transformedRecords: Buffer[] = []
   for (const userRecord of userRecords) {
     let record: string | typeof userRecord = userRecord
     const dataItem = record
     try {
-      const transformed: Buffer = await transformer.call(undefined, dataItem)
+      const transformed: Buffer = transformer(dataItem)
       if (transformed && transformed instanceof Buffer) {
         transformedRecords.push(transformed)
       } else {
@@ -104,9 +116,9 @@ export async function transformRecords(
   return transformedRecords
 }
 
-export async function setupTransformer(): Promise<TransformerFunction> {
+export function setupTransformer(): TransformerFunction {
   // Set the default transformer
-  let transformer: TransformerFunction = jsonToStringTransformer.bind(undefined)
+  let transformer: TransformerFunction = jsonToStringTransformer
   // Check if the transformer has been overridden by environment settings
   const TRANSFORMER_FUNCTION_ENV: string | undefined = process.env[c.TRANSFORMER_FUNCTION_ENV]
   let TRANSFORMER_FUNCTION: keyof typeof transformerFunctions = 'jsonToStringTransformer'
@@ -120,17 +132,14 @@ export async function setupTransformer(): Promise<TransformerFunction> {
     }
     if (!found) {
       const error =
-        'Configured Transformer function ' +
-        TRANSFORMER_FUNCTION +
-        ' is not a valid transformation method in the transformer.js module' +
-        transformer
+        `Configured Transformer function ${TRANSFORMER_FUNCTION} is not a valid ` +
+        `transformation method in the transformer.js module ${transformer}`
       throw Error(error)
     } else {
       if (debug) {
         console.log('Setting data transformer based on Transformer Override configuration')
       }
-      // Dynamically bind in the transformer function
-      transformer = transformerFunctions[TRANSFORMER_FUNCTION].bind(undefined)
+      transformer = transformerFunctions[TRANSFORMER_FUNCTION]
     }
   } else {
     if (debug) {
@@ -154,7 +163,7 @@ export async function setupTransformer(): Promise<TransformerFunction> {
           console.log('Setting data transformer based on Stream Datatype configuration')
         }
         const supportedDatatype = c.supportedDatatypeTransformerMappings[STREAM_DATATYPE]
-        transformer = transformerFunctions[supportedDatatype].bind(undefined)
+        transformer = transformerFunctions[supportedDatatype]
       }
     } else {
       if (debug) {
@@ -163,15 +172,7 @@ export async function setupTransformer(): Promise<TransformerFunction> {
     }
   }
   if (debug) {
-    console.log('Using Transformer function ' + transformer.name)
+    console.log(`Using Transformer function ${transformer.name}`)
   }
   return transformer
-}
-
-const transformerFunctions = {
-  'doNothingTransformer': doNothingTransformer,
-  'addNewlineTransformer': addNewlineTransformer,
-  'jsonToStringTransformer': jsonToStringTransformer,
-  'unmarshallDynamoDBTransformer': unmarshallDynamoDBTransformer,
-  'flattenDynamoDBTransformer': flattenDynamoDBTransformer,
 }
